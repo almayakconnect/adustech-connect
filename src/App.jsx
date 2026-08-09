@@ -13,9 +13,18 @@ export default function App() {
     >
       <div>
         <h1>ADUSTECH Connect</h1>
-        <p>Website is working successfully.</p>
-        <button>Get Started</button>
+        <p>React is working correctly.</p>
+        <button
+          style={{
+            padding: "12px 25px",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+          }}
+        >
+          Get Started
+        </button>
       </div>
     </div>
   );
-        }
+}
