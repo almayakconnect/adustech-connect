@@ -5,143 +5,309 @@
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background: #f0f2f5;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f7fb;
   color: #17202a;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
 
 .app {
   min-height: 100vh;
 }
 
-.header {
-  height: 64px;
-  background: #ffffff;
-  border-bottom: 1px solid #ddd;
+/* NAVBAR */
+
+.navbar {
+  height: 70px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 6%;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 20px;
 }
 
 .logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #166534;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 900;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-actions button {
+  border: none;
+  background: transparent;
+  padding: 10px 16px;
+  border-radius: 8px;
+}
+
+.primary {
+  background: #166534;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 24px;
+  font-weight: 700;
+}
+
+.primary:hover {
+  background: #14532d;
+}
+
+.primary.small {
+  padding: 10px 18px;
+}
+
+.primary.large,
+.secondary.large {
+  padding: 15px 25px;
+}
+
+/* HERO */
+
+.hero {
+  min-height: calc(100vh - 70px);
+  display: flex;
+  justify-content: center;
+  padding: 80px 20px;
+}
+
+.hero-content {
+  width: 100%;
+  max-width: 1000px;
+  text-align: center;
+}
+
+.badge {
+  display: inline-block;
+  background: #dcfce7;
+  color: #166534;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 25px;
+}
+
+.hero h1 {
+  font-size: clamp(42px, 7vw, 76px);
+  line-height: 1.05;
+  letter-spacing: -2px;
+}
+
+.hero h1 span {
   color: #166534;
 }
 
-.logo span {
-  color: #2563eb;
+.hero-content > p {
+  max-width: 680px;
+  margin: 25px auto;
+  color: #667085;
+  font-size: 18px;
+  line-height: 1.7;
 }
 
-.header-text {
+.hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 30px 0 55px;
+}
+
+.secondary {
+  background: white;
+  color: #17202a;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+}
+
+/* FEATURES */
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+.feature {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 25px 18px;
+  text-align: left;
+}
+
+.feature-icon {
+  font-size: 30px;
+  margin-bottom: 15px;
+}
+
+.feature h3 {
+  margin-bottom: 8px;
+}
+
+.feature p {
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* AUTH */
+
+.page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.auth-card {
+  background: white;
+  width: 100%;
+  max-width: 450px;
+  padding: 35px;
+  border-radius: 18px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+}
+
+.auth-card .brand {
+  justify-content: center;
+  margin: 20px 0 30px;
+}
+
+.auth-card h2 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.auth-card > p {
+  text-align: center;
+  color: #667085;
+  margin-bottom: 25px;
+}
+
+.auth-card input {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  outline: none;
+}
+
+.auth-card input:focus {
+  border-color: #166534;
+}
+
+.auth-card .primary {
+  width: 100%;
+  margin-top: 5px;
+}
+
+.back {
+  border: none;
+  background: transparent;
+  color: #166534;
+  font-weight: 600;
+}
+
+.switch {
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.switch button {
+  border: none;
+  background: transparent;
+  color: #166534;
+  font-weight: 700;
+}
+
+footer {
+  padding: 25px 6%;
+  display: flex;
+  justify-content: space-between;
   color: #667085;
   font-size: 14px;
 }
 
-.welcome {
-  min-height: calc(100vh - 64px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 30px 20px;
-}
+/* MOBILE */
 
-.welcome-card {
-  background: white;
-  width: 100%;
-  max-width: 700px;
-  padding: 45px 30px;
-  border-radius: 18px;
-  text-align: center;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-}
+@media (max-width: 800px) {
+  .features {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-.school-logo-placeholder {
-  width: 90px;
-  height: 90px;
-  margin: 0 auto 20px;
-  border-radius: 50%;
-  background: #166534;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 42px;
-  font-weight: bold;
-}
-
-.welcome-card h1 {
-  font-size: 32px;
-  margin-bottom: 15px;
-}
-
-.welcome-card p {
-  color: #667085;
-  line-height: 1.7;
-  max-width: 570px;
-  margin: 0 auto 30px;
-}
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  margin-bottom: 30px;
-}
-
-.features div {
-  background: #f8fafc;
-  padding: 18px 10px;
-  border-radius: 12px;
-}
-
-.features strong,
-.features span {
-  display: block;
-}
-
-.features strong {
-  margin-bottom: 8px;
-}
-
-.features span {
-  font-size: 13px;
-  color: #667085;
-}
-
-.start-button {
-  border: none;
-  background: #166534;
-  color: white;
-  padding: 14px 30px;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.start-button:hover {
-  opacity: 0.9;
+  .navbar {
+    padding: 0 18px;
+  }
 }
 
 @media (max-width: 600px) {
-  .header {
-    padding: 0 18px;
+  .brand span {
+    font-size: 16px;
   }
 
-  .header-text {
-    display: none;
+  .hero {
+    padding: 55px 18px;
   }
 
-  .welcome-card h1 {
-    font-size: 25px;
+  .hero h1 {
+    font-size: 42px;
+  }
+
+  .hero-content > p {
+    font-size: 16px;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+  }
+
+  .hero-buttons button {
+    width: 100%;
   }
 
   .features {
     grid-template-columns: 1fr;
   }
+
+  footer {
+    flex-direction: column;
+    gap: 8px;
   }
+
+  .auth-card {
+    padding: 25px 20px;
+  }
+    }
