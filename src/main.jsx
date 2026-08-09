@@ -1,15 +1,10 @@
-document.getElementById("root").innerHTML = `
-  <div style="
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-family:Arial,sans-serif;
-    text-align:center;
-  ">
-    <div>
-      <h1>ADUSTECH Connect</h1>
-      <p>HTML and JavaScript are loading correctly.</p>
-    </div>
-  </div>
-`;
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css";
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
