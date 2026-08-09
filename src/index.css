@@ -1,0 +1,147 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f2f5;
+  color: #17202a;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.header {
+  height: 64px;
+  background: #ffffff;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6%;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 800;
+  color: #166534;
+}
+
+.logo span {
+  color: #2563eb;
+}
+
+.header-text {
+  color: #667085;
+  font-size: 14px;
+}
+
+.welcome {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px 20px;
+}
+
+.welcome-card {
+  background: white;
+  width: 100%;
+  max-width: 700px;
+  padding: 45px 30px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.school-logo-placeholder {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: #166534;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  font-weight: bold;
+}
+
+.welcome-card h1 {
+  font-size: 32px;
+  margin-bottom: 15px;
+}
+
+.welcome-card p {
+  color: #667085;
+  line-height: 1.7;
+  max-width: 570px;
+  margin: 0 auto 30px;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.features div {
+  background: #f8fafc;
+  padding: 18px 10px;
+  border-radius: 12px;
+}
+
+.features strong,
+.features span {
+  display: block;
+}
+
+.features strong {
+  margin-bottom: 8px;
+}
+
+.features span {
+  font-size: 13px;
+  color: #667085;
+}
+
+.start-button {
+  border: none;
+  background: #166534;
+  color: white;
+  padding: 14px 30px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.start-button:hover {
+  opacity: 0.9;
+}
+
+@media (max-width: 600px) {
+  .header {
+    padding: 0 18px;
+  }
+
+  .header-text {
+    display: none;
+  }
+
+  .welcome-card h1 {
+    font-size: 25px;
+  }
+
+  .features {
+    grid-template-columns: 1fr;
+  }
+  }
