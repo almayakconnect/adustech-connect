@@ -68,7 +68,6 @@ export default function App() {
 function Home({ onRegister, onLogin }) {
   return (
     <main className="hero">
-
       <div className="hero-content">
 
         <div className="badge">
@@ -134,7 +133,6 @@ function Home({ onRegister, onLogin }) {
         </div>
 
       </div>
-
     </main>
   );
 }
@@ -156,6 +154,7 @@ function Register({ onBack, onLogin }) {
   const [programmeId, setProgrammeId] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [levelsLoading, setLevelsLoading] = useState(true);
 
   const [form, setForm] = useState({
     full_name: "",
@@ -176,13 +175,18 @@ function Register({ onBack, onLogin }) {
 
       const { data, error } = await supabase
         .from("faculties")
-        .select("id,name,abbreviation")
+        .select("id, name, abbreviation")
         .eq("institution_id", INSTITUTION_ID)
-        .order("name");
+        .order("name", {
+          ascending: true
+        });
 
       if (error) {
-        console.error("Faculty error:", error);
-        alert("Unable to load faculties.");
+        console.error(
+          "Faculty loading error:",
+          error
+        );
+
         return;
       }
 
@@ -202,18 +206,37 @@ function Register({ onBack, onLogin }) {
 
     async function loadLevels() {
 
+      setLevelsLoading(true);
+
       const { data, error } = await supabase
         .from("levels")
-        .select("id,name")
-        .order("created_at");
+        .select("id, name")
+        .order("created_at", {
+          ascending: true
+        });
 
       if (error) {
-        console.error("Level error:", error);
-        alert("Unable to load levels.");
+
+        console.error(
+          "Level loading error:",
+          error
+        );
+
+        setLevels([]);
+
+        setLevelsLoading(false);
+
         return;
       }
 
+      console.log(
+        "Levels loaded:",
+        data
+      );
+
       setLevels(data || []);
+
+      setLevelsLoading(false);
     }
 
     loadLevels();
@@ -230,30 +253,44 @@ function Register({ onBack, onLogin }) {
     async function loadDepartments() {
 
       if (!facultyId) {
+
         setDepartments([]);
+        setDepartmentId("");
+        setProgrammes([]);
+        setProgrammeId("");
+
         return;
       }
 
       const { data, error } = await supabase
         .from("departments")
-        .select("id,name,abbreviation")
+        .select("id, name, abbreviation")
         .eq("faculty_id", facultyId)
-        .order("name");
+        .order("name", {
+          ascending: true
+        });
 
       if (error) {
-        console.error("Department error:", error);
-        alert("Unable to load departments.");
+
+        console.error(
+          "Department loading error:",
+          error
+        );
+
+        setDepartments([]);
+
         return;
       }
 
       setDepartments(data || []);
+
+      setDepartmentId("");
+      setProgrammes([]);
+      setProgrammeId("");
+
     }
 
     loadDepartments();
-
-    setDepartmentId("");
-    setProgrammeId("");
-    setProgrammes([]);
 
   }, [facultyId]);
 
@@ -267,30 +304,42 @@ function Register({ onBack, onLogin }) {
     async function loadProgrammes() {
 
       if (!departmentId) {
+
         setProgrammes([]);
+        setProgrammeId("");
+
         return;
       }
 
       const { data, error } = await supabase
         .from("programmes")
         .select(
-          "id,name,programme_code,degree_type,duration_years"
+          "id, name, programme_code, degree_type, duration_years"
         )
         .eq("department_id", departmentId)
-        .order("name");
+        .order("name", {
+          ascending: true
+        });
 
       if (error) {
-        console.error("Programme error:", error);
-        alert("Unable to load programmes.");
+
+        console.error(
+          "Programme loading error:",
+          error
+        );
+
+        setProgrammes([]);
+
         return;
       }
 
       setProgrammes(data || []);
+
+      setProgrammeId("");
+
     }
 
     loadProgrammes();
-
-    setProgrammeId("");
 
   }, [departmentId]);
 
@@ -299,11 +348,18 @@ function Register({ onBack, onLogin }) {
      FORM UPDATE
   ===================================================== */
 
-  function updateForm(e) {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    });
+  function updateForm(event) {
+
+    const {
+      name,
+      value
+    } = event.target;
+
+    setForm((previous) => ({
+      ...previous,
+      [name]: value
+    }));
+
   }
 
 
@@ -311,9 +367,9 @@ function Register({ onBack, onLogin }) {
      REGISTER
   ===================================================== */
 
-  async function handleRegister(e) {
+  async function handleRegister(event) {
 
-    e.preventDefault();
+    event.preventDefault();
 
     if (!facultyId) {
       alert("Please select your faculty.");
@@ -336,7 +392,9 @@ function Register({ onBack, onLogin }) {
     }
 
     if (form.password.length < 6) {
-      alert("Password must contain at least 6 characters.");
+      alert(
+        "Password must contain at least 6 characters."
+      );
       return;
     }
 
@@ -344,15 +402,9 @@ function Register({ onBack, onLogin }) {
 
     try {
 
-      /*
-       * ALL student information is sent to Auth metadata.
-       * The database trigger reads this metadata and creates
-       * the complete profile.
-       */
-
       const {
-        data: authData,
-        error: authError
+        data,
+        error
       } = await supabase.auth.signUp({
 
         email: form.email.trim(),
@@ -391,25 +443,16 @@ function Register({ onBack, onLogin }) {
       });
 
 
-      if (authError) {
-        throw authError;
+      if (error) {
+        throw error;
       }
 
 
-      if (!authData.user) {
+      if (!data?.user) {
         throw new Error(
           "Account could not be created."
         );
       }
-
-
-      /*
-       * IMPORTANT:
-       * We DO NOT update profiles here.
-       *
-       * handle_new_user() already created the
-       * complete profile from the metadata.
-       */
 
 
       alert(
@@ -429,7 +472,6 @@ function Register({ onBack, onLogin }) {
       setDepartmentId("");
       setProgrammeId("");
 
-
     } catch (error) {
 
       console.error(
@@ -438,7 +480,7 @@ function Register({ onBack, onLogin }) {
       );
 
       alert(
-        error.message ||
+        error?.message ||
         "Registration failed. Please try again."
       );
 
@@ -457,22 +499,34 @@ function Register({ onBack, onLogin }) {
 
         <button
           className="back"
-          onClick={onBack}
           type="button"
+          onClick={onBack}
         >
           ← Back
         </button>
 
+
         <div className="brand">
-          <div className="logo">A</div>
-          <h1>ADUSTECH Connect</h1>
+
+          <div className="logo">
+            A
+          </div>
+
+          <h1>
+            ADUSTECH Connect
+          </h1>
+
         </div>
 
-        <h2>Create your account</h2>
+
+        <h2>
+          Create your account
+        </h2>
 
         <p>
           Join the academic community of students.
         </p>
+
 
         <form onSubmit={handleRegister}>
 
@@ -480,6 +534,7 @@ function Register({ onBack, onLogin }) {
 
           <input
             name="full_name"
+            type="text"
             placeholder="Full name"
             value={form.full_name}
             onChange={updateForm}
@@ -503,6 +558,7 @@ function Register({ onBack, onLogin }) {
 
           <input
             name="matric_number"
+            type="text"
             placeholder="Matric number"
             value={form.matric_number}
             onChange={updateForm}
@@ -527,8 +583,10 @@ function Register({ onBack, onLogin }) {
 
           <select
             value={facultyId}
-            onChange={(e) =>
-              setFacultyId(e.target.value)
+            onChange={(event) =>
+              setFacultyId(
+                event.target.value
+              )
             }
             required
           >
@@ -544,6 +602,9 @@ function Register({ onBack, onLogin }) {
                 value={faculty.id}
               >
                 {faculty.name}
+                {faculty.abbreviation
+                  ? ` (${faculty.abbreviation})`
+                  : ""}
               </option>
 
             ))}
@@ -555,8 +616,10 @@ function Register({ onBack, onLogin }) {
 
           <select
             value={departmentId}
-            onChange={(e) =>
-              setDepartmentId(e.target.value)
+            onChange={(event) =>
+              setDepartmentId(
+                event.target.value
+              )
             }
             disabled={!facultyId}
             required
@@ -575,6 +638,9 @@ function Register({ onBack, onLogin }) {
                 value={department.id}
               >
                 {department.name}
+                {department.abbreviation
+                  ? ` (${department.abbreviation})`
+                  : ""}
               </option>
 
             ))}
@@ -586,8 +652,10 @@ function Register({ onBack, onLogin }) {
 
           <select
             value={programmeId}
-            onChange={(e) =>
-              setProgrammeId(e.target.value)
+            onChange={(event) =>
+              setProgrammeId(
+                event.target.value
+              )
             }
             disabled={!departmentId}
             required
@@ -619,11 +687,19 @@ function Register({ onBack, onLogin }) {
             name="level_id"
             value={form.level_id}
             onChange={updateForm}
+            disabled={
+              levelsLoading ||
+              levels.length === 0
+            }
             required
           >
 
             <option value="">
-              Select Level
+              {levelsLoading
+                ? "Loading Levels..."
+                : levels.length === 0
+                ? "No Levels Available"
+                : "Select Level"}
             </option>
 
             {levels.map((level) => (
@@ -645,14 +721,20 @@ function Register({ onBack, onLogin }) {
           <button
             className="primary"
             type="submit"
-            disabled={loading}
+            disabled={
+              loading ||
+              levelsLoading
+            }
           >
+
             {loading
               ? "Creating Account..."
               : "Create Account"}
+
           </button>
 
         </form>
+
 
         <p className="switch">
 
@@ -685,25 +767,31 @@ function Login({ onBack, onRegister }) {
   const [loading, setLoading] = useState(false);
 
 
-  async function handleLogin(e) {
+  async function handleLogin(event) {
 
-    e.preventDefault();
+    event.preventDefault();
 
     setLoading(true);
 
     try {
 
-      const { error } =
+      const {
+        error
+      } =
         await supabase.auth.signInWithPassword({
           email: email.trim(),
           password
         });
 
+
       if (error) {
         throw error;
       }
 
-      alert("Login successful!");
+
+      alert(
+        "Login successful!"
+      );
 
     } catch (error) {
 
@@ -713,7 +801,7 @@ function Login({ onBack, onRegister }) {
       );
 
       alert(
-        error.message ||
+        error?.message ||
         "Login failed."
       );
 
@@ -732,11 +820,12 @@ function Login({ onBack, onRegister }) {
 
         <button
           className="back"
-          onClick={onBack}
           type="button"
+          onClick={onBack}
         >
           ← Back
         </button>
+
 
         <div className="brand">
 
@@ -750,6 +839,7 @@ function Login({ onBack, onRegister }) {
 
         </div>
 
+
         <h2>
           Welcome back
         </h2>
@@ -758,39 +848,49 @@ function Login({ onBack, onRegister }) {
           Log in to continue to your student community.
         </p>
 
+
         <form onSubmit={handleLogin}>
 
           <input
             type="email"
             placeholder="Student email"
             value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
+            onChange={(event) =>
+              setEmail(
+                event.target.value
+              )
             }
             required
           />
+
 
           <input
             type="password"
             placeholder="Password"
             value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
+            onChange={(event) =>
+              setPassword(
+                event.target.value
+              )
             }
             required
           />
+
 
           <button
             className="primary"
             type="submit"
             disabled={loading}
           >
+
             {loading
               ? "Logging in..."
               : "Log In"}
+
           </button>
 
         </form>
+
 
         <p className="switch">
 
@@ -839,4 +939,4 @@ function Feature({
 
     </div>
   );
-            }
+      }
