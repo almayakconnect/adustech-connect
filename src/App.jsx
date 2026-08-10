@@ -8,6 +8,7 @@ export default function App() {
 
   return (
     <div className="app">
+
       <header className="navbar">
         <div className="brand">
           <div className="logo">A</div>
@@ -53,6 +54,7 @@ export default function App() {
         <strong>ADUSTECH Connect</strong>
         <span>Student academic community platform</span>
       </footer>
+
     </div>
   );
 }
@@ -65,6 +67,7 @@ export default function App() {
 function Home({ onRegister, onLogin }) {
   return (
     <main className="hero">
+
       <div className="hero-content">
 
         <div className="badge">
@@ -84,6 +87,7 @@ function Home({ onRegister, onLogin }) {
         </p>
 
         <div className="hero-buttons">
+
           <button
             className="primary large"
             onClick={onRegister}
@@ -97,6 +101,7 @@ function Home({ onRegister, onLogin }) {
           >
             Log In
           </button>
+
         </div>
 
         <div className="features">
@@ -126,7 +131,9 @@ function Home({ onRegister, onLogin }) {
           />
 
         </div>
+
       </div>
+
     </main>
   );
 }
@@ -173,7 +180,7 @@ function Register({ onBack, onLogin }) {
         .order("name");
 
       if (error) {
-        console.error("Faculty error:", error);
+        console.error(error);
         alert("Unable to load faculties.");
         return;
       }
@@ -200,7 +207,7 @@ function Register({ onBack, onLogin }) {
         .order("created_at");
 
       if (error) {
-        console.error("Level error:", error);
+        console.error(error);
         alert("Unable to load levels.");
         return;
       }
@@ -233,7 +240,7 @@ function Register({ onBack, onLogin }) {
         .order("name");
 
       if (error) {
-        console.error("Department error:", error);
+        console.error(error);
         alert("Unable to load departments.");
         return;
       }
@@ -272,7 +279,7 @@ function Register({ onBack, onLogin }) {
         .order("name");
 
       if (error) {
-        console.error("Programme error:", error);
+        console.error(error);
         alert("Unable to load programmes.");
         return;
       }
@@ -288,7 +295,7 @@ function Register({ onBack, onLogin }) {
 
 
   /* =====================================================
-     FORM UPDATE
+     UPDATE FORM
   ===================================================== */
 
   function updateForm(e) {
@@ -338,7 +345,7 @@ function Register({ onBack, onLogin }) {
 
     try {
 
-      /* CREATE AUTH ACCOUNT */
+      /* CREATE AUTH USER */
 
       const {
         data: authData,
@@ -366,27 +373,31 @@ function Register({ onBack, onLogin }) {
       }
 
 
-      /* CREATE PROFILE */
+      /* WAIT A MOMENT FOR THE DATABASE TRIGGER */
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 500)
+      );
+
+
+      /* UPDATE THE PROFILE CREATED BY THE TRIGGER */
 
       const { error: profileError } = await supabase
         .from("profiles")
-        .insert({
-          id: userId,
+        .update({
           full_name: form.full_name.trim(),
           email: form.email.trim(),
           matric_number: form.matric_number.trim(),
-
           institution_id: INSTITUTION_ID,
-
           faculty_id: facultyId,
           department_id: departmentId,
           programme_id: programmeId,
           level_id: form.level_id,
-
           is_student: true,
           is_verified: false,
           verification_status: "pending"
-        });
+        })
+        .eq("id", userId);
 
       if (profileError) {
         throw profileError;
@@ -454,8 +465,6 @@ function Register({ onBack, onLogin }) {
 
         <form onSubmit={handleRegister}>
 
-          {/* FULL NAME */}
-
           <input
             name="full_name"
             placeholder="Full name"
@@ -463,9 +472,6 @@ function Register({ onBack, onLogin }) {
             onChange={updateForm}
             required
           />
-
-
-          {/* EMAIL */}
 
           <input
             name="email"
@@ -476,9 +482,6 @@ function Register({ onBack, onLogin }) {
             required
           />
 
-
-          {/* MATRIC NUMBER */}
-
           <input
             name="matric_number"
             placeholder="Matric number"
@@ -486,9 +489,6 @@ function Register({ onBack, onLogin }) {
             onChange={updateForm}
             required
           />
-
-
-          {/* PASSWORD */}
 
           <input
             name="password"
@@ -516,14 +516,12 @@ function Register({ onBack, onLogin }) {
             </option>
 
             {faculties.map((faculty) => (
-
               <option
                 key={faculty.id}
                 value={faculty.id}
               >
                 {faculty.name}
               </option>
-
             ))}
 
           </select>
@@ -547,14 +545,12 @@ function Register({ onBack, onLogin }) {
             </option>
 
             {departments.map((department) => (
-
               <option
                 key={department.id}
                 value={department.id}
               >
                 {department.name}
               </option>
-
             ))}
 
           </select>
@@ -578,14 +574,12 @@ function Register({ onBack, onLogin }) {
             </option>
 
             {programmes.map((programme) => (
-
               <option
                 key={programme.id}
                 value={programme.id}
               >
                 {programme.name}
               </option>
-
             ))}
 
           </select>
@@ -605,20 +599,16 @@ function Register({ onBack, onLogin }) {
             </option>
 
             {levels.map((level) => (
-
               <option
                 key={level.id}
                 value={level.id}
               >
                 {level.name}
               </option>
-
             ))}
 
           </select>
 
-
-          {/* SUBMIT */}
 
           <button
             className="primary"
@@ -660,7 +650,6 @@ function Login({ onBack, onRegister }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-
   async function handleLogin(e) {
 
     e.preventDefault();
@@ -683,7 +672,7 @@ function Login({ onBack, onRegister }) {
 
     } catch (error) {
 
-      console.error("Login error:", error);
+      console.error(error);
 
       alert(
         error.message ||
@@ -749,7 +738,9 @@ function Login({ onBack, onRegister }) {
             type="submit"
             disabled={loading}
           >
-            {loading ? "Logging in..." : "Log In"}
+            {loading
+              ? "Logging in..."
+              : "Log In"}
           </button>
 
         </form>
@@ -791,4 +782,4 @@ function Feature({ icon, title, text }) {
 
     </div>
   );
-}
+    }
