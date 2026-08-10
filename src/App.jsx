@@ -6,8 +6,54 @@ const INSTITUTION_ID =
 
 const PENDING_PROFILE_KEY = "adustech_pending_profile";
 
+/* =====================================================
+   APP
+===================================================== */
+
 export default function App() {
   const [page, setPage] = useState("home");
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    checkUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user || null);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function checkUser() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      setUser(user);
+    }
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setUser(null);
+    setPage("home");
+  }
+
+  if (user) {
+    return (
+      <div className="app">
+        <Dashboard
+          user={user}
+          onLogout={handleLogout}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -116,7 +162,7 @@ function Home({ onRegister, onLogin }) {
           <Feature
             icon="💬"
             title="Messenger"
-            text="Chat privately or communicate in groups."
+            text="Chat privately with other students."
           />
 
           <Feature
@@ -155,10 +201,6 @@ function Register({ onBack, onLogin }) {
     level_id: "",
   });
 
-  /* =====================================================
-     LOAD FACULTIES
-  ===================================================== */
-
   useEffect(() => {
     async function loadFaculties() {
       const { data, error } = await supabase
@@ -168,7 +210,7 @@ function Register({ onBack, onLogin }) {
         .order("name", { ascending: true });
 
       if (error) {
-        console.error("Faculty loading error:", error);
+        console.error(error);
         setFaculties([]);
         return;
       }
@@ -179,10 +221,6 @@ function Register({ onBack, onLogin }) {
     loadFaculties();
   }, []);
 
-  /* =====================================================
-     LOAD LEVELS
-  ===================================================== */
-
   useEffect(() => {
     async function loadLevels() {
       setLevelsLoading(true);
@@ -190,10 +228,12 @@ function Register({ onBack, onLogin }) {
       const { data, error } = await supabase
         .from("levels")
         .select("id, name")
-        .order("created_at", { ascending: true });
+        .order("created_at", {
+          ascending: true,
+        });
 
       if (error) {
-        console.error("Level loading error:", error);
+        console.error(error);
         setLevels([]);
       } else {
         setLevels(data || []);
@@ -204,10 +244,6 @@ function Register({ onBack, onLogin }) {
 
     loadLevels();
   }, []);
-
-  /* =====================================================
-     LOAD DEPARTMENTS
-  ===================================================== */
 
   useEffect(() => {
     async function loadDepartments() {
@@ -220,10 +256,12 @@ function Register({ onBack, onLogin }) {
         .from("departments")
         .select("id, name, abbreviation")
         .eq("faculty_id", facultyId)
-        .order("name", { ascending: true });
+        .order("name", {
+          ascending: true,
+        });
 
       if (error) {
-        console.error("Department loading error:", error);
+        console.error(error);
         setDepartments([]);
         return;
       }
@@ -238,10 +276,6 @@ function Register({ onBack, onLogin }) {
     setProgrammes([]);
   }, [facultyId]);
 
-  /* =====================================================
-     LOAD PROGRAMMES
-  ===================================================== */
-
   useEffect(() => {
     async function loadProgrammes() {
       if (!departmentId) {
@@ -255,10 +289,12 @@ function Register({ onBack, onLogin }) {
           "id, name, programme_code, degree_type, duration_years"
         )
         .eq("department_id", departmentId)
-        .order("name", { ascending: true });
+        .order("name", {
+          ascending: true,
+        });
 
       if (error) {
-        console.error("Programme loading error:", error);
+        console.error(error);
         setProgrammes([]);
         return;
       }
@@ -271,10 +307,6 @@ function Register({ onBack, onLogin }) {
     setProgrammeId("");
   }, [departmentId]);
 
-  /* =====================================================
-     FORM UPDATE
-  ===================================================== */
-
   function updateForm(event) {
     const { name, value } = event.target;
 
@@ -283,10 +315,6 @@ function Register({ onBack, onLogin }) {
       [name]: value,
     }));
   }
-
-  /* =====================================================
-     VALIDATE ACADEMIC SELECTIONS
-  ===================================================== */
 
   function validateAcademicSelections() {
     if (!facultyId) {
@@ -304,28 +332,12 @@ function Register({ onBack, onLogin }) {
     if (!form.level_id) {
       throw new Error("Please select your level.");
     }
-
-    const selectedLevel = levels.find(
-      (level) => level.id === form.level_id
-    );
-
-    if (!selectedLevel) {
-      throw new Error(
-        "The selected level is no longer available. Please select your level again."
-      );
-    }
   }
-
-  /* =====================================================
-     REGISTER
-  ===================================================== */
 
   async function handleRegister(event) {
     event.preventDefault();
 
-    if (loading) {
-      return;
-    }
+    if (loading) return;
 
     setLoading(true);
 
@@ -354,11 +366,6 @@ function Register({ onBack, onLogin }) {
         level_id: form.level_id,
       };
 
-      /*
-       * Keep a temporary copy in case the browser/session
-       * needs to finish the profile after login.
-       */
-
       localStorage.setItem(
         PENDING_PROFILE_KEY,
         JSON.stringify({
@@ -366,11 +373,6 @@ function Register({ onBack, onLogin }) {
           profile: pendingProfile,
         })
       );
-
-      /*
-       * Email confirmation has been disabled in Supabase.
-       * Therefore signUp should return a session immediately.
-       */
 
       const { data, error } =
         await supabase.auth.signUp({
@@ -381,14 +383,13 @@ function Register({ onBack, onLogin }) {
               full_name:
                 form.full_name.trim(),
 
-              matric_number: matricNumber,
+              matric_number:
+                matricNumber,
             },
           },
         });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (!data?.user) {
         throw new Error(
@@ -396,15 +397,11 @@ function Register({ onBack, onLogin }) {
         );
       }
 
-      /*
-       * If Supabase returned a session, complete the
-       * academic profile immediately.
-       */
-
       if (data.session) {
         await saveAcademicProfile(
           data.user.id,
-          pendingProfile
+          pendingProfile,
+          form.full_name.trim()
         );
 
         localStorage.removeItem(
@@ -412,25 +409,20 @@ function Register({ onBack, onLogin }) {
         );
 
         alert(
-          "Account created successfully! Welcome to ADUSTECH Connect."
+          "Account created successfully!"
         );
 
-        resetRegistrationForm();
+        window.location.reload();
 
         return;
       }
 
-      /*
-       * This should normally not happen when Confirm Email
-       * is disabled. Keep the pending information so the
-       * profile can be completed after login.
-       */
-
       alert(
-        "Your account was created. Please log in to complete your student profile."
+        "Account created. Please log in to complete your profile."
       );
 
       resetRegistrationForm();
+
       setTimeout(() => onLogin(), 300);
     } catch (error) {
       console.error(
@@ -440,7 +432,7 @@ function Register({ onBack, onLogin }) {
 
       alert(
         error?.message ||
-          "Registration failed. Please try again."
+          "Registration failed."
       );
     } finally {
       setLoading(false);
@@ -476,7 +468,6 @@ function Register({ onBack, onLogin }) {
 
         <div className="brand">
           <div className="logo">A</div>
-
           <h1>ADUSTECH Connect</h1>
         </div>
 
@@ -524,8 +515,6 @@ function Register({ onBack, onLogin }) {
             required
           />
 
-          {/* FACULTY */}
-
           <select
             value={facultyId}
             onChange={(event) =>
@@ -549,8 +538,6 @@ function Register({ onBack, onLogin }) {
               </option>
             ))}
           </select>
-
-          {/* DEPARTMENT */}
 
           <select
             value={departmentId}
@@ -581,8 +568,6 @@ function Register({ onBack, onLogin }) {
             ))}
           </select>
 
-          {/* PROGRAMME */}
-
           <select
             value={programmeId}
             onChange={(event) =>
@@ -608,8 +593,6 @@ function Register({ onBack, onLogin }) {
               </option>
             ))}
           </select>
-
-          {/* LEVEL */}
 
           <select
             name="level_id"
@@ -656,7 +639,6 @@ function Register({ onBack, onLogin }) {
 
         <p className="switch">
           Already have an account?{" "}
-
           <button
             type="button"
             onClick={onLogin}
@@ -670,12 +652,13 @@ function Register({ onBack, onLogin }) {
 }
 
 /* =====================================================
-   SAVE ACADEMIC PROFILE
+   SAVE PROFILE
 ===================================================== */
 
 async function saveAcademicProfile(
   userId,
-  profile
+  profile,
+  fullName
 ) {
   if (!userId) {
     throw new Error(
@@ -689,68 +672,39 @@ async function saveAcademicProfile(
     );
   }
 
-  /*
-   * Confirm that the selected level actually exists
-   * before calling the RPC. This prevents the old
-   * foreign-key error from being hidden.
-   */
-
   const { data: levelExists, error: levelError } =
     await supabase
       .from("levels")
-      .select("id, name")
+      .select("id")
       .eq("id", profile.level_id)
       .maybeSingle();
 
   if (levelError) {
-    console.error(
-      "Level verification error:",
-      levelError
-    );
-
     throw new Error(
-      `Could not verify selected level: ${levelError.message}`
+      `Could not verify level: ${levelError.message}`
     );
   }
 
   if (!levelExists) {
     throw new Error(
-      "The selected level does not exist in the database. Please select your level again."
+      "The selected level does not exist."
     );
   }
-
-  /*
-   * Make sure the current authenticated user is the
-   * same user whose profile we are updating.
-   */
 
   const {
     data: userData,
     error: userError,
   } = await supabase.auth.getUser();
 
-  if (userError) {
-    throw userError;
-  }
+  if (userError) throw userError;
 
   const user = userData?.user;
 
   if (!user) {
     throw new Error(
-      "Your login session is not available. Please log in again."
+      "Your login session is unavailable."
     );
   }
-
-  if (user.id !== userId) {
-    throw new Error(
-      "The authenticated user does not match the profile being updated."
-    );
-  }
-
-  /*
-   * Complete the academic profile through the secure
-   * SECURITY DEFINER RPC.
-   */
 
   const { error } = await supabase.rpc(
     "complete_student_profile",
@@ -778,14 +732,23 @@ async function saveAcademicProfile(
   );
 
   if (error) {
-    console.error(
-      "Academic profile RPC error:",
-      error
-    );
-
     throw new Error(
       `Academic profile could not be saved: ${error.message}`
     );
+  }
+
+  /*
+   * Try to update the student's name if the
+   * profiles table contains full_name.
+   */
+
+  if (fullName) {
+    await supabase
+      .from("profiles")
+      .update({
+        full_name: fullName,
+      })
+      .eq("id", userId);
   }
 }
 
@@ -796,15 +759,12 @@ async function saveAcademicProfile(
 function Login({ onBack, onRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
 
   async function handleLogin(event) {
     event.preventDefault();
 
-    if (loading) {
-      return;
-    }
+    if (loading) return;
 
     setLoading(true);
 
@@ -818,19 +778,13 @@ function Login({ onBack, onRegister }) {
           password,
         });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (!data?.user) {
         throw new Error(
-          "Login failed. No user was returned."
+          "Login failed."
         );
       }
-
-      /*
-       * Check for unfinished registration data.
-       */
 
       const pendingRaw =
         localStorage.getItem(
@@ -850,11 +804,6 @@ function Login({ onBack, onRegister }) {
           );
         }
 
-        /*
-         * Only use pending information belonging
-         * to this exact email address.
-         */
-
         if (
           pending &&
           pending.email ===
@@ -869,36 +818,15 @@ function Login({ onBack, onRegister }) {
             localStorage.removeItem(
               PENDING_PROFILE_KEY
             );
-
-            alert(
-              "Login successful! Your academic profile has been completed."
-            );
-
-            return;
           } catch (profileError) {
             console.error(
-              "Pending academic profile error:",
               profileError
             );
-
-            alert(
-              "Login successful, but your academic information could not be saved.\n\n" +
-                profileError.message
-            );
-
-            return;
           }
         }
       }
 
-      /*
-       * No pending academic information.
-       * Normal login.
-       */
-
-      alert(
-        "Login successful! Welcome to ADUSTECH Connect."
-      );
+      window.location.reload();
     } catch (error) {
       console.error(
         "Login error:",
@@ -907,7 +835,7 @@ function Login({ onBack, onRegister }) {
 
       alert(
         error?.message ||
-          "Login failed. Please check your email and password."
+          "Login failed. Check your email and password."
       );
     } finally {
       setLoading(false);
@@ -927,7 +855,6 @@ function Login({ onBack, onRegister }) {
 
         <div className="brand">
           <div className="logo">A</div>
-
           <h1>ADUSTECH Connect</h1>
         </div>
 
@@ -971,7 +898,6 @@ function Login({ onBack, onRegister }) {
 
         <p className="switch">
           Don't have an account?{" "}
-
           <button
             type="button"
             onClick={onRegister}
@@ -981,6 +907,459 @@ function Login({ onBack, onRegister }) {
         </p>
       </div>
     </main>
+  );
+}
+
+/* =====================================================
+   DASHBOARD
+===================================================== */
+
+function Dashboard({ user, onLogout }) {
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedStudent, setSelectedStudent] =
+    useState(null);
+
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    loadMyProfile();
+  }, [user]);
+
+  async function loadMyProfile() {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(
+        `
+        id,
+        full_name,
+        matric_number,
+        faculty_id,
+        department_id,
+        programme_id,
+        level_id
+        `
+      )
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Profile error:",
+        error
+      );
+      return;
+    }
+
+    setProfile(data);
+  }
+
+  async function searchStudents(event) {
+    event.preventDefault();
+
+    const query = search.trim();
+
+    if (!query) {
+      setResults([]);
+      return;
+    }
+
+    setSearching(true);
+
+    try {
+      /*
+       * Search by name or matric number.
+       */
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          `
+          id,
+          full_name,
+          matric_number,
+          faculty_id,
+          department_id,
+          programme_id,
+          level_id
+          `
+        )
+        .eq(
+          "institution_id",
+          INSTITUTION_ID
+        )
+        .or(
+          `full_name.ilike.%${query}%,matric_number.ilike.%${query}%`
+        )
+        .neq("id", user.id)
+        .limit(30);
+
+      if (error) {
+        console.error(
+          "Search error:",
+          error
+        );
+
+        alert(
+          `Search failed: ${error.message}`
+        );
+
+        setResults([]);
+        return;
+      }
+
+      setResults(data || []);
+    } catch (error) {
+      console.error(error);
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  return (
+    <main className="dashboard">
+      <header className="dashboard-header">
+        <div className="dashboard-brand">
+          <div className="logo">A</div>
+
+          <div>
+            <strong>
+              ADUSTECH Connect
+            </strong>
+
+            <small>
+              Student Community
+            </small>
+          </div>
+        </div>
+
+        <button
+          className="logout"
+          onClick={onLogout}
+        >
+          Logout
+        </button>
+      </header>
+
+      <section className="dashboard-content">
+        <div className="welcome">
+          <p>Welcome back 👋</p>
+
+          <h1>
+            {profile?.full_name ||
+              user.user_metadata
+                ?.full_name ||
+              "Student"}
+          </h1>
+
+          <span>
+            Connect with students across
+            ADUSTECH.
+          </span>
+        </div>
+
+        {/* SEARCH BAR */}
+
+        <form
+          className="search-box"
+          onSubmit={searchStudents}
+        >
+          <span className="search-icon">
+            🔎
+          </span>
+
+          <input
+            type="search"
+            placeholder="Search students by name or matric number..."
+            value={search}
+            onChange={(event) =>
+              setSearch(event.target.value)
+            }
+          />
+
+          {search && (
+            <button
+              type="button"
+              className="clear-search"
+              onClick={() => {
+                setSearch("");
+                setResults([]);
+              }}
+            >
+              ×
+            </button>
+          )}
+
+          <button
+            className="primary search-button"
+            type="submit"
+            disabled={searching}
+          >
+            {searching
+              ? "Searching..."
+              : "Search"}
+          </button>
+        </form>
+
+        {/* SEARCH RESULTS */}
+
+        {searching && (
+          <div className="search-status">
+            Searching students...
+          </div>
+        )}
+
+        {!searching &&
+          search.trim() &&
+          results.length === 0 && (
+            <div className="empty-search">
+              <div>🔍</div>
+
+              <h3>
+                No students found
+              </h3>
+
+              <p>
+                Try another name or matric
+                number.
+              </p>
+            </div>
+          )}
+
+        {results.length > 0 && (
+          <section className="search-results">
+            <div className="section-title">
+              <h2>
+                Search Results
+              </h2>
+
+              <span>
+                {results.length} student
+                {results.length === 1
+                  ? ""
+                  : "s"}
+              </span>
+            </div>
+
+            <div className="student-grid">
+              {results.map((student) => (
+                <StudentCard
+                  key={student.id}
+                  student={student}
+                  onClick={() =>
+                    setSelectedStudent(
+                      student
+                    )
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* DEFAULT DASHBOARD */}
+
+        {!search.trim() && (
+          <section className="dashboard-cards">
+            <DashboardCard
+              icon="👥"
+              title="Find Students"
+              text="Search for students by name or matric number."
+              onClick={() => {
+                document
+                  .querySelector(
+                    ".search-box input"
+                  )
+                  ?.focus();
+              }}
+            />
+
+            <DashboardCard
+              icon="💬"
+              title="Messages"
+              text="Your private student conversations will appear here."
+            />
+
+            <DashboardCard
+              icon="🎓"
+              title="Academic Community"
+              text="Connect with students from your faculty and department."
+            />
+
+            <DashboardCard
+              icon="📝"
+              title="Assignments"
+              text="Discuss assignments and share academic materials."
+            />
+          </section>
+        )}
+      </section>
+
+      {/* STUDENT PROFILE MODAL */}
+
+      {selectedStudent && (
+        <StudentModal
+          student={selectedStudent}
+          onClose={() =>
+            setSelectedStudent(null)
+          }
+        />
+      )}
+    </main>
+  );
+}
+
+/* =====================================================
+   STUDENT CARD
+===================================================== */
+
+function StudentCard({ student, onClick }) {
+  const initials = getInitials(
+    student.full_name
+  );
+
+  return (
+    <button
+      className="student-card"
+      onClick={onClick}
+    >
+      <div className="avatar">
+        {initials}
+      </div>
+
+      <div className="student-info">
+        <h3>
+          {student.full_name ||
+            "Student"}
+        </h3>
+
+        <p>
+          {student.matric_number ||
+            "Matric number unavailable"}
+        </p>
+
+        <span>
+          🎓 ADUSTECH Student
+        </span>
+      </div>
+
+      <div className="arrow">
+        →
+      </div>
+    </button>
+  );
+}
+
+/* =====================================================
+   STUDENT MODAL
+===================================================== */
+
+function StudentModal({
+  student,
+  onClose,
+}) {
+  const initials = getInitials(
+    student.full_name
+  );
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+    >
+      <div
+        className="student-modal"
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+      >
+        <button
+          className="modal-close"
+          onClick={onClose}
+        >
+          ×
+        </button>
+
+        <div className="large-avatar">
+          {initials}
+        </div>
+
+        <h2>
+          {student.full_name ||
+            "Student"}
+        </h2>
+
+        <p className="matric">
+          {student.matric_number ||
+            "Matric number unavailable"}
+        </p>
+
+        <div className="profile-details">
+          <div>
+            <strong>
+              Institution
+            </strong>
+            <span>
+              Aliko Dangote University
+              of Science and Technology
+            </span>
+          </div>
+
+          <div>
+            <strong>
+              Student ID
+            </strong>
+            <span>
+              {student.matric_number ||
+                "Not available"}
+            </span>
+          </div>
+        </div>
+
+        <button
+          className="primary full-button"
+          onClick={() =>
+            alert(
+              "Messaging will be connected next."
+            )
+          }
+        >
+          💬 Message Student
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* =====================================================
+   DASHBOARD CARD
+===================================================== */
+
+function DashboardCard({
+  icon,
+  title,
+  text,
+  onClick,
+}) {
+  return (
+    <button
+      className="dashboard-card"
+      onClick={onClick}
+    >
+      <div className="dashboard-card-icon">
+        {icon}
+      </div>
+
+      <h3>{title}</h3>
+
+      <p>{text}</p>
+
+      <span>
+        Open →
+      </span>
+    </button>
   );
 }
 
@@ -1004,4 +1383,21 @@ function Feature({
       <p>{text}</p>
     </div>
   );
-                                         }
+}
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
+function getInitials(name) {
+  if (!name) return "A";
+
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(
+      (word) => word[0]?.toUpperCase()
+    )
+    .join("");
+      }
