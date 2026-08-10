@@ -81,8 +81,8 @@ function Home({ onRegister, onLogin }) {
         </h1>
 
         <p>
-          ADUSTECH Connect brings students together to connect,
-          communicate, study, share knowledge and build their
+          ADUSTECH Connect brings students together to
+          connect, communicate, study and build their
           academic community.
         </p>
 
@@ -183,10 +183,9 @@ function Register({ onBack, onLogin }) {
 
       if (error) {
         console.error(
-          "Faculty loading error:",
+          "Faculty error:",
           error
         );
-
         return;
       }
 
@@ -218,23 +217,22 @@ function Register({ onBack, onLogin }) {
       if (error) {
 
         console.error(
-          "Level loading error:",
+          "Level error:",
           error
         );
 
         setLevels([]);
 
-        setLevelsLoading(false);
+      } else {
 
-        return;
+        console.log(
+          "Levels:",
+          data
+        );
+
+        setLevels(data || []);
+
       }
-
-      console.log(
-        "Levels loaded:",
-        data
-      );
-
-      setLevels(data || []);
 
       setLevelsLoading(false);
     }
@@ -253,12 +251,7 @@ function Register({ onBack, onLogin }) {
     async function loadDepartments() {
 
       if (!facultyId) {
-
         setDepartments([]);
-        setDepartmentId("");
-        setProgrammes([]);
-        setProgrammeId("");
-
         return;
       }
 
@@ -273,7 +266,7 @@ function Register({ onBack, onLogin }) {
       if (error) {
 
         console.error(
-          "Department loading error:",
+          "Department error:",
           error
         );
 
@@ -283,14 +276,13 @@ function Register({ onBack, onLogin }) {
       }
 
       setDepartments(data || []);
-
-      setDepartmentId("");
-      setProgrammes([]);
-      setProgrammeId("");
-
     }
 
     loadDepartments();
+
+    setDepartmentId("");
+    setProgrammeId("");
+    setProgrammes([]);
 
   }, [facultyId]);
 
@@ -304,10 +296,7 @@ function Register({ onBack, onLogin }) {
     async function loadProgrammes() {
 
       if (!departmentId) {
-
         setProgrammes([]);
-        setProgrammeId("");
-
         return;
       }
 
@@ -324,7 +313,7 @@ function Register({ onBack, onLogin }) {
       if (error) {
 
         console.error(
-          "Programme loading error:",
+          "Programme error:",
           error
         );
 
@@ -334,30 +323,25 @@ function Register({ onBack, onLogin }) {
       }
 
       setProgrammes(data || []);
-
-      setProgrammeId("");
-
     }
 
     loadProgrammes();
+
+    setProgrammeId("");
 
   }, [departmentId]);
 
 
   /* =====================================================
-     FORM UPDATE
+     FORM
   ===================================================== */
 
   function updateForm(event) {
 
-    const {
-      name,
-      value
-    } = event.target;
-
     setForm((previous) => ({
       ...previous,
-      [name]: value
+      [event.target.name]:
+        event.target.value
     }));
 
   }
@@ -412,32 +396,13 @@ function Register({ onBack, onLogin }) {
         password: form.password,
 
         options: {
-
           data: {
-
             full_name:
               form.full_name.trim(),
 
             matric_number:
-              form.matric_number.trim(),
-
-            institution_id:
-              INSTITUTION_ID,
-
-            faculty_id:
-              facultyId,
-
-            department_id:
-              departmentId,
-
-            programme_id:
-              programmeId,
-
-            level_id:
-              form.level_id
-
+              form.matric_number.trim()
           }
-
         }
 
       });
@@ -447,7 +412,6 @@ function Register({ onBack, onLogin }) {
         throw error;
       }
 
-
       if (!data?.user) {
         throw new Error(
           "Account could not be created."
@@ -455,9 +419,33 @@ function Register({ onBack, onLogin }) {
       }
 
 
-      alert(
-        "Account created successfully! Please check your email to verify your account."
-      );
+      /*
+       * If Supabase gives us an authenticated session
+       * immediately, save the academic information now.
+       */
+
+      if (data.session) {
+
+        await saveAcademicProfile(
+          data.user.id,
+          form.matric_number,
+          facultyId,
+          departmentId,
+          programmeId,
+          form.level_id
+        );
+
+        alert(
+          "Account created successfully!"
+        );
+
+      } else {
+
+        alert(
+          "Account created successfully. Please verify your email, then log in to complete your student profile."
+        );
+
+      }
 
 
       setForm({
@@ -481,7 +469,7 @@ function Register({ onBack, onLogin }) {
 
       alert(
         error?.message ||
-        "Registration failed. Please try again."
+        "Registration failed."
       );
 
     } finally {
@@ -530,8 +518,6 @@ function Register({ onBack, onLogin }) {
 
         <form onSubmit={handleRegister}>
 
-          {/* FULL NAME */}
-
           <input
             name="full_name"
             type="text"
@@ -540,9 +526,6 @@ function Register({ onBack, onLogin }) {
             onChange={updateForm}
             required
           />
-
-
-          {/* EMAIL */}
 
           <input
             name="email"
@@ -553,9 +536,6 @@ function Register({ onBack, onLogin }) {
             required
           />
 
-
-          {/* MATRIC NUMBER */}
-
           <input
             name="matric_number"
             type="text"
@@ -564,9 +544,6 @@ function Register({ onBack, onLogin }) {
             onChange={updateForm}
             required
           />
-
-
-          {/* PASSWORD */}
 
           <input
             name="password"
@@ -716,8 +693,6 @@ function Register({ onBack, onLogin }) {
           </select>
 
 
-          {/* CREATE ACCOUNT */}
-
           <button
             className="primary"
             type="submit"
@@ -726,11 +701,9 @@ function Register({ onBack, onLogin }) {
               levelsLoading
             }
           >
-
             {loading
               ? "Creating Account..."
               : "Create Account"}
-
           </button>
 
         </form>
@@ -757,6 +730,59 @@ function Register({ onBack, onLogin }) {
 
 
 /* =====================================================
+   SAVE ACADEMIC PROFILE
+===================================================== */
+
+async function saveAcademicProfile(
+  userId,
+  matricNumber,
+  facultyId,
+  departmentId,
+  programmeId,
+  levelId
+) {
+
+  const { error } =
+    await supabase.rpc(
+      "complete_student_profile",
+      {
+        p_user_id: userId,
+
+        p_matric_number:
+          matricNumber.trim(),
+
+        p_institution_id:
+          INSTITUTION_ID,
+
+        p_faculty_id:
+          facultyId,
+
+        p_department_id:
+          departmentId,
+
+        p_programme_id:
+          programmeId,
+
+        p_level_id:
+          levelId
+      }
+    );
+
+
+  if (error) {
+
+    console.error(
+      "Academic profile error:",
+      error
+    );
+
+    throw error;
+  }
+
+}
+
+
+/* =====================================================
    LOGIN
 ===================================================== */
 
@@ -776,6 +802,7 @@ function Login({ onBack, onRegister }) {
     try {
 
       const {
+        data,
         error
       } =
         await supabase.auth.signInWithPassword({
@@ -789,8 +816,22 @@ function Login({ onBack, onRegister }) {
       }
 
 
+      /*
+       * After successful login, the user now has
+       * an authenticated session.
+       */
+
+      const user = data.user;
+
+
+      /*
+       * We don't automatically overwrite academic
+       * fields here because the login page doesn't
+       * have those selections.
+       */
+
       alert(
-        "Login successful!"
+        `Welcome back${user?.email ? `, ${user.email}` : ""}!`
       );
 
     } catch (error) {
@@ -863,7 +904,6 @@ function Login({ onBack, onRegister }) {
             required
           />
 
-
           <input
             type="password"
             placeholder="Password"
@@ -876,17 +916,14 @@ function Login({ onBack, onRegister }) {
             required
           />
 
-
           <button
             className="primary"
             type="submit"
             disabled={loading}
           >
-
             {loading
               ? "Logging in..."
               : "Log In"}
-
           </button>
 
         </form>
@@ -939,4 +976,4 @@ function Feature({
 
     </div>
   );
-      }
+        }
