@@ -45,14 +45,12 @@ export default function App() {
         />
       )}
 
-
       {page === "register" && (
         <Register
           onBack={() => setPage("home")}
           onLogin={() => setPage("login")}
         />
       )}
-
 
       {page === "login" && (
         <Login
@@ -64,7 +62,9 @@ export default function App() {
 
       <footer>
         <strong>ADUSTECH Connect</strong>
-        <span>Student academic community platform</span>
+        <span>
+          Student academic community platform
+        </span>
       </footer>
 
     </div>
@@ -94,9 +94,9 @@ function Home({ onRegister, onLogin }) {
         </h1>
 
         <p>
-          ADUSTECH Connect brings students together to
-          connect, communicate, study and build their
-          academic community.
+          ADUSTECH Connect brings students together
+          to connect, communicate, study and build
+          their academic community.
         </p>
 
         <div className="hero-buttons">
@@ -197,12 +197,7 @@ function Register({ onBack, onLogin }) {
         });
 
       if (error) {
-
-        console.error(
-          "Faculty loading error:",
-          error
-        );
-
+        console.error("Faculty error:", error);
         return;
       }
 
@@ -227,17 +222,13 @@ function Register({ onBack, onLogin }) {
       const { data, error } = await supabase
         .from("levels")
         .select("id, name")
-        .order("created_at", {
+        .order("name", {
           ascending: true
         });
 
       if (error) {
 
-        console.error(
-          "Level loading error:",
-          error
-        );
-
+        console.error("Level error:", error);
         setLevels([]);
 
       } else {
@@ -263,10 +254,8 @@ function Register({ onBack, onLogin }) {
     async function loadDepartments() {
 
       if (!facultyId) {
-
         setDepartments([]);
         return;
-
       }
 
       const { data, error } = await supabase
@@ -280,17 +269,15 @@ function Register({ onBack, onLogin }) {
       if (error) {
 
         console.error(
-          "Department loading error:",
+          "Department error:",
           error
         );
 
         setDepartments([]);
         return;
-
       }
 
       setDepartments(data || []);
-
     }
 
     loadDepartments();
@@ -311,10 +298,8 @@ function Register({ onBack, onLogin }) {
     async function loadProgrammes() {
 
       if (!departmentId) {
-
         setProgrammes([]);
         return;
-
       }
 
       const { data, error } = await supabase
@@ -330,17 +315,15 @@ function Register({ onBack, onLogin }) {
       if (error) {
 
         console.error(
-          "Programme loading error:",
+          "Programme error:",
           error
         );
 
         setProgrammes([]);
         return;
-
       }
 
       setProgrammes(data || []);
-
     }
 
     loadProgrammes();
@@ -365,7 +348,6 @@ function Register({ onBack, onLogin }) {
       ...previous,
       [name]: value
     }));
-
   }
 
 
@@ -430,9 +412,8 @@ function Register({ onBack, onLogin }) {
 
 
       /*
-       * Save the selections temporarily in the browser.
-       * This allows us to finish the profile after
-       * email verification.
+       * Remember the academic selections until
+       * the student has verified their email.
        */
 
       localStorage.setItem(
@@ -461,13 +442,11 @@ function Register({ onBack, onLogin }) {
         options: {
 
           data: {
-
             full_name:
               form.full_name.trim(),
 
             matric_number:
               form.matric_number.trim()
-
           }
 
         }
@@ -480,7 +459,7 @@ function Register({ onBack, onLogin }) {
       }
 
 
-      if (!data?.user) {
+      if (!data || !data.user) {
         throw new Error(
           "Account could not be created."
         );
@@ -488,8 +467,8 @@ function Register({ onBack, onLogin }) {
 
 
       /*
-       * If email confirmation is disabled,
-       * Supabase gives us a session immediately.
+       * If email confirmation is OFF,
+       * save the academic profile immediately.
        */
 
       if (data.session) {
@@ -528,7 +507,6 @@ function Register({ onBack, onLogin }) {
       setDepartmentId("");
       setProgrammeId("");
 
-
     } catch (error) {
 
       console.error(
@@ -546,7 +524,6 @@ function Register({ onBack, onLogin }) {
       setLoading(false);
 
     }
-
   }
 
 
@@ -634,9 +611,7 @@ function Register({ onBack, onLogin }) {
           <select
             value={facultyId}
             onChange={(event) =>
-              setFacultyId(
-                event.target.value
-              )
+              setFacultyId(event.target.value)
             }
             required
           >
@@ -667,9 +642,7 @@ function Register({ onBack, onLogin }) {
           <select
             value={departmentId}
             onChange={(event) =>
-              setDepartmentId(
-                event.target.value
-              )
+              setDepartmentId(event.target.value)
             }
             disabled={!facultyId}
             required
@@ -703,9 +676,7 @@ function Register({ onBack, onLogin }) {
           <select
             value={programmeId}
             onChange={(event) =>
-              setProgrammeId(
-                event.target.value
-              )
+              setProgrammeId(event.target.value)
             }
             disabled={!departmentId}
             required
@@ -814,65 +785,60 @@ async function saveAcademicProfile(
 ) {
 
   const {
-    data: {
-      user
-    }
-  } =
-    await supabase.auth.getUser();
+    data,
+    error: userError
+  } = await supabase.auth.getUser();
 
 
-  if (!user || user.id !== userId) {
+  if (
+    userError ||
+    !data ||
+    !data.user ||
+    data.user.id !== userId
+  ) {
 
     throw new Error(
       "Your session is not ready. Please log in again."
     );
-
   }
 
 
   const {
     error
-  } =
-    await supabase.rpc(
-      "complete_student_profile",
-      {
+  } = await supabase.rpc(
+    "complete_student_profile",
+    {
+      p_user_id: userId,
 
-        p_user_id:
-          userId,
+      p_matric_number:
+        profile.matric_number,
 
-        p_matric_number:
-          profile.matric_number,
+      p_institution_id:
+        profile.institution_id,
 
-        p_institution_id:
-          profile.institution_id,
+      p_faculty_id:
+        profile.faculty_id,
 
-        p_faculty_id:
-          profile.faculty_id,
+      p_department_id:
+        profile.department_id,
 
-        p_department_id:
-          profile.department_id,
+      p_programme_id:
+        profile.programme_id,
 
-        p_programme_id:
-          profile.programme_id,
-
-        p_level_id:
-          profile.level_id
-
-      }
-    );
+      p_level_id:
+        profile.level_id
+    }
+  );
 
 
   if (error) {
-
     console.error(
       "Academic profile error:",
       error
     );
 
     throw error;
-
   }
-
 }
 
 
@@ -888,10 +854,6 @@ function Login({ onBack, onRegister }) {
   const [loading, setLoading] = useState(false);
 
 
-  /* =====================================================
-     LOGIN
-  ===================================================== */
-
   async function handleLogin(event) {
 
     event.preventDefault();
@@ -905,12 +867,8 @@ function Login({ onBack, onRegister }) {
         error
       } =
         await supabase.auth.signInWithPassword({
-
-          email:
-            email.trim(),
-
+          email: email.trim(),
           password
-
         });
 
 
@@ -919,18 +877,16 @@ function Login({ onBack, onRegister }) {
       }
 
 
-      if (!data?.user) {
-
+      if (!data || !data.user) {
         throw new Error(
           "Login failed."
         );
-
       }
 
 
       /*
-       * Check whether we have pending academic
-       * information from registration.
+       * Check whether this student has academic
+       * information waiting to be saved.
        */
 
       const pendingRaw =
@@ -944,19 +900,18 @@ function Login({ onBack, onRegister }) {
         try {
 
           const pending =
-            JSON.parse(
-              pendingRaw
-            );
+            JSON.parse(pendingRaw);
 
 
-          /*
-           * Only use the pending information if
-           * it belongs to the email that just logged in.
-           */
+          const loggedInEmail =
+            data.user.email
+              ? data.user.email.toLowerCase()
+              : "";
+
 
           if (
             pending.email ===
-            data.user.email?.toLowerCase()
+            loggedInEmail
           ) {
 
             await saveAcademicProfile(
@@ -974,41 +929,28 @@ function Login({ onBack, onRegister }) {
               "Welcome to ADUSTECH Connect! Your student profile has been completed successfully."
             );
 
-            setLoading(false);
-
             return;
-
           }
 
         } catch (profileError) {
 
           console.error(
-            "Pending profile error:",
+            "Profile saving error:",
             profileError
           );
 
           alert(
-            "You logged in successfully, but your academic information could not be saved yet. Please try logging in again."
+            "Login was successful, but your academic information could not be saved. Please log in again."
           );
 
-          setLoading(false);
-
           return;
-
         }
-
       }
 
-
-      /*
-       * If there is no pending registration data,
-       * simply log the user in.
-       */
 
       alert(
         "Login successful!"
       );
-
 
     } catch (error) {
 
@@ -1027,7 +969,6 @@ function Login({ onBack, onRegister }) {
       setLoading(false);
 
     }
-
   }
 
 
@@ -1074,9 +1015,7 @@ function Login({ onBack, onRegister }) {
             placeholder="Student email"
             value={email}
             onChange={(event) =>
-              setEmail(
-                event.target.value
-              )
+              setEmail(event.target.value)
             }
             required
           />
@@ -1087,9 +1026,7 @@ function Login({ onBack, onRegister }) {
             placeholder="Password"
             value={password}
             onChange={(event) =>
-              setPassword(
-                event.target.value
-              )
+              setPassword(event.target.value)
             }
             required
           />
