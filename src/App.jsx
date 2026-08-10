@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
 
-const INSTITUTION_ID = "ed465a1f-f79c-4aed-b9de-8c18d51d32b4";
+const INSTITUTION_ID =
+  "ed465a1f-f79c-4aed-b9de-8c18d51d32b4";
 
 export default function App() {
   const [page, setPage] = useState("home");
@@ -180,7 +181,7 @@ function Register({ onBack, onLogin }) {
         .order("name");
 
       if (error) {
-        console.error(error);
+        console.error("Faculty error:", error);
         alert("Unable to load faculties.");
         return;
       }
@@ -207,7 +208,7 @@ function Register({ onBack, onLogin }) {
         .order("created_at");
 
       if (error) {
-        console.error(error);
+        console.error("Level error:", error);
         alert("Unable to load levels.");
         return;
       }
@@ -240,7 +241,7 @@ function Register({ onBack, onLogin }) {
         .order("name");
 
       if (error) {
-        console.error(error);
+        console.error("Department error:", error);
         alert("Unable to load departments.");
         return;
       }
@@ -279,7 +280,7 @@ function Register({ onBack, onLogin }) {
         .order("name");
 
       if (error) {
-        console.error(error);
+        console.error("Programme error:", error);
         alert("Unable to load programmes.");
         return;
       }
@@ -295,16 +296,14 @@ function Register({ onBack, onLogin }) {
 
 
   /* =====================================================
-     UPDATE FORM
+     FORM UPDATE
   ===================================================== */
 
   function updateForm(e) {
-
     setForm({
       ...form,
       [e.target.name]: e.target.value
     });
-
   }
 
 
@@ -345,70 +344,78 @@ function Register({ onBack, onLogin }) {
 
     try {
 
-      /* CREATE AUTH USER */
+      /*
+       * ALL student information is sent to Auth metadata.
+       * The database trigger reads this metadata and creates
+       * the complete profile.
+       */
 
       const {
         data: authData,
         error: authError
       } = await supabase.auth.signUp({
+
         email: form.email.trim(),
+
         password: form.password,
+
         options: {
+
           data: {
-            full_name: form.full_name.trim()
+
+            full_name:
+              form.full_name.trim(),
+
+            matric_number:
+              form.matric_number.trim(),
+
+            institution_id:
+              INSTITUTION_ID,
+
+            faculty_id:
+              facultyId,
+
+            department_id:
+              departmentId,
+
+            programme_id:
+              programmeId,
+
+            level_id:
+              form.level_id
+
           }
+
         }
+
       });
+
 
       if (authError) {
         throw authError;
       }
 
-      const userId = authData.user?.id;
 
-      if (!userId) {
+      if (!authData.user) {
         throw new Error(
           "Account could not be created."
         );
       }
 
 
-      /* WAIT A MOMENT FOR THE DATABASE TRIGGER */
+      /*
+       * IMPORTANT:
+       * We DO NOT update profiles here.
+       *
+       * handle_new_user() already created the
+       * complete profile from the metadata.
+       */
 
-      await new Promise((resolve) =>
-        setTimeout(resolve, 500)
-      );
-
-
-      /* UPDATE THE PROFILE CREATED BY THE TRIGGER */
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          full_name: form.full_name.trim(),
-          email: form.email.trim(),
-          matric_number: form.matric_number.trim(),
-          institution_id: INSTITUTION_ID,
-          faculty_id: facultyId,
-          department_id: departmentId,
-          programme_id: programmeId,
-          level_id: form.level_id,
-          is_student: true,
-          is_verified: false,
-          verification_status: "pending"
-        })
-        .eq("id", userId);
-
-      if (profileError) {
-        throw profileError;
-      }
-
-
-      /* SUCCESS */
 
       alert(
         "Account created successfully! Please check your email to verify your account."
       );
+
 
       setForm({
         full_name: "",
@@ -422,9 +429,13 @@ function Register({ onBack, onLogin }) {
       setDepartmentId("");
       setProgrammeId("");
 
+
     } catch (error) {
 
-      console.error("Registration error:", error);
+      console.error(
+        "Registration error:",
+        error
+      );
 
       alert(
         error.message ||
@@ -465,6 +476,8 @@ function Register({ onBack, onLogin }) {
 
         <form onSubmit={handleRegister}>
 
+          {/* FULL NAME */}
+
           <input
             name="full_name"
             placeholder="Full name"
@@ -472,6 +485,9 @@ function Register({ onBack, onLogin }) {
             onChange={updateForm}
             required
           />
+
+
+          {/* EMAIL */}
 
           <input
             name="email"
@@ -482,6 +498,9 @@ function Register({ onBack, onLogin }) {
             required
           />
 
+
+          {/* MATRIC NUMBER */}
+
           <input
             name="matric_number"
             placeholder="Matric number"
@@ -489,6 +508,9 @@ function Register({ onBack, onLogin }) {
             onChange={updateForm}
             required
           />
+
+
+          {/* PASSWORD */}
 
           <input
             name="password"
@@ -516,12 +538,14 @@ function Register({ onBack, onLogin }) {
             </option>
 
             {faculties.map((faculty) => (
+
               <option
                 key={faculty.id}
                 value={faculty.id}
               >
                 {faculty.name}
               </option>
+
             ))}
 
           </select>
@@ -545,12 +569,14 @@ function Register({ onBack, onLogin }) {
             </option>
 
             {departments.map((department) => (
+
               <option
                 key={department.id}
                 value={department.id}
               >
                 {department.name}
               </option>
+
             ))}
 
           </select>
@@ -574,12 +600,14 @@ function Register({ onBack, onLogin }) {
             </option>
 
             {programmes.map((programme) => (
+
               <option
                 key={programme.id}
                 value={programme.id}
               >
                 {programme.name}
               </option>
+
             ))}
 
           </select>
@@ -599,16 +627,20 @@ function Register({ onBack, onLogin }) {
             </option>
 
             {levels.map((level) => (
+
               <option
                 key={level.id}
                 value={level.id}
               >
                 {level.name}
               </option>
+
             ))}
 
           </select>
 
+
+          {/* CREATE ACCOUNT */}
 
           <button
             className="primary"
@@ -623,6 +655,7 @@ function Register({ onBack, onLogin }) {
         </form>
 
         <p className="switch">
+
           Already have an account?{" "}
 
           <button
@@ -631,6 +664,7 @@ function Register({ onBack, onLogin }) {
           >
             Log in
           </button>
+
         </p>
 
       </div>
@@ -649,6 +683,7 @@ function Login({ onBack, onRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
 
   async function handleLogin(e) {
 
@@ -672,7 +707,10 @@ function Login({ onBack, onRegister }) {
 
     } catch (error) {
 
-      console.error(error);
+      console.error(
+        "Login error:",
+        error
+      );
 
       alert(
         error.message ||
@@ -701,11 +739,20 @@ function Login({ onBack, onRegister }) {
         </button>
 
         <div className="brand">
-          <div className="logo">A</div>
-          <h1>ADUSTECH Connect</h1>
+
+          <div className="logo">
+            A
+          </div>
+
+          <h1>
+            ADUSTECH Connect
+          </h1>
+
         </div>
 
-        <h2>Welcome back</h2>
+        <h2>
+          Welcome back
+        </h2>
 
         <p>
           Log in to continue to your student community.
@@ -746,6 +793,7 @@ function Login({ onBack, onRegister }) {
         </form>
 
         <p className="switch">
+
           Don't have an account?{" "}
 
           <button
@@ -754,6 +802,7 @@ function Login({ onBack, onRegister }) {
           >
             Create one
           </button>
+
         </p>
 
       </div>
@@ -767,7 +816,11 @@ function Login({ onBack, onRegister }) {
    FEATURE
 ===================================================== */
 
-function Feature({ icon, title, text }) {
+function Feature({
+  icon,
+  title,
+  text
+}) {
 
   return (
     <div className="feature">
@@ -776,10 +829,14 @@ function Feature({ icon, title, text }) {
         {icon}
       </div>
 
-      <h3>{title}</h3>
+      <h3>
+        {title}
+      </h3>
 
-      <p>{text}</p>
+      <p>
+        {text}
+      </p>
 
     </div>
   );
-    }
+            }
