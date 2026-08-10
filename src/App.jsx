@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
 
+const INSTITUTION_ID = "ed465a1f-f79c-4aed-b9de-8c18d51d32b4";
+
 export default function App() {
-  const [showRegister, setShowRegister] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
+  const [page, setPage] = useState("home");
 
   return (
     <div className="app">
-
       <header className="navbar">
         <div className="brand">
           <div className="logo">A</div>
@@ -15,31 +15,37 @@ export default function App() {
         </div>
 
         <div className="nav-actions">
-          <button onClick={() => setShowLogin(true)}>Log In</button>
+          <button onClick={() => setPage("login")}>
+            Log In
+          </button>
 
           <button
             className="primary small"
-            onClick={() => setShowRegister(true)}
+            onClick={() => setPage("register")}
           >
             Sign Up
           </button>
         </div>
       </header>
 
-      {showRegister ? (
-        <Register onBack={() => setShowRegister(false)} />
-      ) : showLogin ? (
-        <Login
-          onBack={() => setShowLogin(false)}
-          onRegister={() => {
-            setShowLogin(false);
-            setShowRegister(true);
-          }}
-        />
-      ) : (
+      {page === "home" && (
         <Home
-          onRegister={() => setShowRegister(true)}
-          onLogin={() => setShowLogin(true)}
+          onRegister={() => setPage("register")}
+          onLogin={() => setPage("login")}
+        />
+      )}
+
+      {page === "register" && (
+        <Register
+          onBack={() => setPage("home")}
+          onLogin={() => setPage("login")}
+        />
+      )}
+
+      {page === "login" && (
+        <Login
+          onBack={() => setPage("home")}
+          onRegister={() => setPage("register")}
         />
       )}
 
@@ -47,20 +53,18 @@ export default function App() {
         <strong>ADUSTECH Connect</strong>
         <span>Student academic community platform</span>
       </footer>
-
     </div>
   );
 }
 
 
-/* =========================
+/* =====================================================
    HOME
-========================= */
+===================================================== */
 
 function Home({ onRegister, onLogin }) {
   return (
     <main className="hero">
-
       <div className="hero-content">
 
         <div className="badge">
@@ -80,7 +84,6 @@ function Home({ onRegister, onLogin }) {
         </p>
 
         <div className="hero-buttons">
-
           <button
             className="primary large"
             onClick={onRegister}
@@ -94,7 +97,6 @@ function Home({ onRegister, onLogin }) {
           >
             Log In
           </button>
-
         </div>
 
         <div className="features">
@@ -124,23 +126,22 @@ function Home({ onRegister, onLogin }) {
           />
 
         </div>
-
       </div>
-
     </main>
   );
 }
 
 
-/* =========================
+/* =====================================================
    REGISTER
-========================= */
+===================================================== */
 
-function Register({ onBack }) {
+function Register({ onBack, onLogin }) {
 
   const [faculties, setFaculties] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [programmes, setProgrammes] = useState([]);
+  const [levels, setLevels] = useState([]);
 
   const [facultyId, setFacultyId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
@@ -153,11 +154,13 @@ function Register({ onBack }) {
     email: "",
     password: "",
     matric_number: "",
-    level: ""
+    level_id: ""
   });
 
 
-  /* LOAD FACULTIES */
+  /* =====================================================
+     LOAD FACULTIES
+  ===================================================== */
 
   useEffect(() => {
 
@@ -166,14 +169,12 @@ function Register({ onBack }) {
       const { data, error } = await supabase
         .from("faculties")
         .select("id,name,abbreviation")
-        .eq(
-          "institution_id",
-          "ed465a1f-f79c-4aed-b9de-8c18d51d32b4"
-        )
+        .eq("institution_id", INSTITUTION_ID)
         .order("name");
 
       if (error) {
-        console.error(error);
+        console.error("Faculty error:", error);
+        alert("Unable to load faculties.");
         return;
       }
 
@@ -185,7 +186,36 @@ function Register({ onBack }) {
   }, []);
 
 
-  /* LOAD DEPARTMENTS */
+  /* =====================================================
+     LOAD LEVELS
+  ===================================================== */
+
+  useEffect(() => {
+
+    async function loadLevels() {
+
+      const { data, error } = await supabase
+        .from("levels")
+        .select("id,name")
+        .order("created_at");
+
+      if (error) {
+        console.error("Level error:", error);
+        alert("Unable to load levels.");
+        return;
+      }
+
+      setLevels(data || []);
+    }
+
+    loadLevels();
+
+  }, []);
+
+
+  /* =====================================================
+     LOAD DEPARTMENTS
+  ===================================================== */
 
   useEffect(() => {
 
@@ -203,12 +233,12 @@ function Register({ onBack }) {
         .order("name");
 
       if (error) {
-        console.error(error);
+        console.error("Department error:", error);
+        alert("Unable to load departments.");
         return;
       }
 
       setDepartments(data || []);
-
     }
 
     loadDepartments();
@@ -220,7 +250,9 @@ function Register({ onBack }) {
   }, [facultyId]);
 
 
-  /* LOAD PROGRAMMES */
+  /* =====================================================
+     LOAD PROGRAMMES
+  ===================================================== */
 
   useEffect(() => {
 
@@ -240,12 +272,12 @@ function Register({ onBack }) {
         .order("name");
 
       if (error) {
-        console.error(error);
+        console.error("Programme error:", error);
+        alert("Unable to load programmes.");
         return;
       }
 
       setProgrammes(data || []);
-
     }
 
     loadProgrammes();
@@ -255,7 +287,9 @@ function Register({ onBack }) {
   }, [departmentId]);
 
 
-  /* UPDATE FORM */
+  /* =====================================================
+     FORM UPDATE
+  ===================================================== */
 
   function updateForm(e) {
 
@@ -267,19 +301,36 @@ function Register({ onBack }) {
   }
 
 
-  /* SIGN UP */
+  /* =====================================================
+     REGISTER
+  ===================================================== */
 
   async function handleRegister(e) {
 
     e.preventDefault();
 
-    if (
-      !facultyId ||
-      !departmentId ||
-      !programmeId ||
-      !form.level
-    ) {
-      alert("Please complete your academic information.");
+    if (!facultyId) {
+      alert("Please select your faculty.");
+      return;
+    }
+
+    if (!departmentId) {
+      alert("Please select your department.");
+      return;
+    }
+
+    if (!programmeId) {
+      alert("Please select your programme.");
+      return;
+    }
+
+    if (!form.level_id) {
+      alert("Please select your level.");
+      return;
+    }
+
+    if (form.password.length < 6) {
+      alert("Password must contain at least 6 characters.");
       return;
     }
 
@@ -287,15 +338,17 @@ function Register({ onBack }) {
 
     try {
 
+      /* CREATE AUTH ACCOUNT */
+
       const {
         data: authData,
         error: authError
       } = await supabase.auth.signUp({
-        email: form.email,
+        email: form.email.trim(),
         password: form.password,
         options: {
           data: {
-            full_name: form.full_name
+            full_name: form.full_name.trim()
           }
         }
       });
@@ -307,22 +360,29 @@ function Register({ onBack }) {
       const userId = authData.user?.id;
 
       if (!userId) {
-        throw new Error("Account was not created.");
+        throw new Error(
+          "Account could not be created."
+        );
       }
+
+
+      /* CREATE PROFILE */
 
       const { error: profileError } = await supabase
         .from("profiles")
         .insert({
           id: userId,
-          full_name: form.full_name,
-          email: form.email,
-          matric_number: form.matric_number,
-          institution_id:
-            "ed465a1f-f79c-4aed-b9de-8c18d51d32b4",
+          full_name: form.full_name.trim(),
+          email: form.email.trim(),
+          matric_number: form.matric_number.trim(),
+
+          institution_id: INSTITUTION_ID,
+
           faculty_id: facultyId,
           department_id: departmentId,
           programme_id: programmeId,
-          level_id: form.level,
+          level_id: form.level_id,
+
           is_student: true,
           is_verified: false,
           verification_status: "pending"
@@ -332,17 +392,32 @@ function Register({ onBack }) {
         throw profileError;
       }
 
+
+      /* SUCCESS */
+
       alert(
-        "Account created successfully! Check your email to verify your account."
+        "Account created successfully! Please check your email to verify your account."
       );
+
+      setForm({
+        full_name: "",
+        email: "",
+        password: "",
+        matric_number: "",
+        level_id: ""
+      });
+
+      setFacultyId("");
+      setDepartmentId("");
+      setProgrammeId("");
 
     } catch (error) {
 
-      console.error(error);
+      console.error("Registration error:", error);
 
       alert(
         error.message ||
-        "Unable to create your account."
+        "Registration failed. Please try again."
       );
 
     } finally {
@@ -350,7 +425,6 @@ function Register({ onBack }) {
       setLoading(false);
 
     }
-
   }
 
 
@@ -362,6 +436,7 @@ function Register({ onBack }) {
         <button
           className="back"
           onClick={onBack}
+          type="button"
         >
           ← Back
         </button>
@@ -379,6 +454,8 @@ function Register({ onBack }) {
 
         <form onSubmit={handleRegister}>
 
+          {/* FULL NAME */}
+
           <input
             name="full_name"
             placeholder="Full name"
@@ -386,6 +463,9 @@ function Register({ onBack }) {
             onChange={updateForm}
             required
           />
+
+
+          {/* EMAIL */}
 
           <input
             name="email"
@@ -396,6 +476,9 @@ function Register({ onBack }) {
             required
           />
 
+
+          {/* MATRIC NUMBER */}
+
           <input
             name="matric_number"
             placeholder="Matric number"
@@ -404,14 +487,17 @@ function Register({ onBack }) {
             required
           />
 
+
+          {/* PASSWORD */}
+
           <input
             name="password"
             type="password"
             placeholder="Password"
             value={form.password}
             onChange={updateForm}
-            required
             minLength={6}
+            required
           />
 
 
@@ -455,9 +541,9 @@ function Register({ onBack }) {
           >
 
             <option value="">
-              {facultyId
-                ? "Select Department"
-                : "Select Faculty First"}
+              {!facultyId
+                ? "Select Faculty First"
+                : "Select Department"}
             </option>
 
             {departments.map((department) => (
@@ -486,9 +572,9 @@ function Register({ onBack }) {
           >
 
             <option value="">
-              {departmentId
-                ? "Select Programme"
-                : "Select Department First"}
+              {!departmentId
+                ? "Select Department First"
+                : "Select Programme"}
             </option>
 
             {programmes.map((programme) => (
@@ -508,8 +594,8 @@ function Register({ onBack }) {
           {/* LEVEL */}
 
           <select
-            name="level"
-            value={form.level}
+            name="level_id"
+            value={form.level_id}
             onChange={updateForm}
             required
           >
@@ -518,32 +604,21 @@ function Register({ onBack }) {
               Select Level
             </option>
 
-            <option value="100">
-              100 Level
-            </option>
+            {levels.map((level) => (
 
-            <option value="200">
-              200 Level
-            </option>
+              <option
+                key={level.id}
+                value={level.id}
+              >
+                {level.name}
+              </option>
 
-            <option value="300">
-              300 Level
-            </option>
-
-            <option value="400">
-              400 Level
-            </option>
-
-            <option value="500">
-              500 Level
-            </option>
-
-            <option value="600">
-              600 Level
-            </option>
+            ))}
 
           </select>
 
+
+          {/* SUBMIT */}
 
           <button
             className="primary"
@@ -557,6 +632,17 @@ function Register({ onBack }) {
 
         </form>
 
+        <p className="switch">
+          Already have an account?{" "}
+
+          <button
+            type="button"
+            onClick={onLogin}
+          >
+            Log in
+          </button>
+        </p>
+
       </div>
 
     </main>
@@ -564,33 +650,53 @@ function Register({ onBack }) {
 }
 
 
-/* =========================
+/* =====================================================
    LOGIN
-========================= */
+===================================================== */
 
 function Login({ onBack, onRegister }) {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
 
   async function handleLogin(e) {
 
     e.preventDefault();
 
-    const { error } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+    setLoading(true);
 
-    if (error) {
-      alert(error.message);
-      return;
+    try {
+
+      const { error } =
+        await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      alert("Login successful!");
+
+    } catch (error) {
+
+      console.error("Login error:", error);
+
+      alert(
+        error.message ||
+        "Login failed."
+      );
+
+    } finally {
+
+      setLoading(false);
+
     }
-
-    alert("Login successful!");
-
   }
+
 
   return (
     <main className="page">
@@ -600,6 +706,7 @@ function Login({ onBack, onRegister }) {
         <button
           className="back"
           onClick={onBack}
+          type="button"
         >
           ← Back
         </button>
@@ -640,8 +747,9 @@ function Login({ onBack, onRegister }) {
           <button
             className="primary"
             type="submit"
+            disabled={loading}
           >
-            Log In
+            {loading ? "Logging in..." : "Log In"}
           </button>
 
         </form>
@@ -649,7 +757,10 @@ function Login({ onBack, onRegister }) {
         <p className="switch">
           Don't have an account?{" "}
 
-          <button onClick={onRegister}>
+          <button
+            type="button"
+            onClick={onRegister}
+          >
             Create one
           </button>
         </p>
@@ -661,9 +772,9 @@ function Login({ onBack, onRegister }) {
 }
 
 
-/* =========================
+/* =====================================================
    FEATURE
-========================= */
+===================================================== */
 
 function Feature({ icon, title, text }) {
 
@@ -680,5 +791,4 @@ function Feature({ icon, title, text }) {
 
     </div>
   );
-
-               }
+}
