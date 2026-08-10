@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
+import { supabase } from "./lib/supabase";
 
 const INSTITUTION_ID =
   "ed465a1f-f79c-4aed-b9de-8c18d51d32b4";
