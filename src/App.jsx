@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "./lib/supabase";
+import { supabase } from "./supabase";
 
 export default function App() {
   const [showRegister, setShowRegister] = useState(false);
@@ -7,39 +7,7 @@ export default function App() {
 
   return (
     <div className="app">
-      {showRegister ? (
-        <Register
-          goBack={() => setShowRegister(false)}
-          goLogin={() => {
-            setShowRegister(false);
-            setShowLogin(true);
-          }}
-        />
-      ) : showLogin ? (
-        <Login
-          goBack={() => setShowLogin(false)}
-          goRegister={() => {
-            setShowLogin(false);
-            setShowRegister(true);
-          }}
-        />
-      ) : (
-        <Home
-          goRegister={() => setShowRegister(true)}
-          goLogin={() => setShowLogin(true)}
-        />
-      )}
-    </div>
-  );
-}
 
-/* =========================
-   HOME PAGE
-========================= */
-
-function Home({ goRegister, goLogin }) {
-  return (
-    <>
       <header className="navbar">
         <div className="brand">
           <div className="logo">A</div>
@@ -47,309 +15,354 @@ function Home({ goRegister, goLogin }) {
         </div>
 
         <div className="nav-actions">
-          <button onClick={goLogin}>Log In</button>
+          <button onClick={() => setShowLogin(true)}>Log In</button>
 
-          <button className="primary small" onClick={goRegister}>
+          <button
+            className="primary small"
+            onClick={() => setShowRegister(true)}
+          >
             Sign Up
           </button>
         </div>
       </header>
 
-      <main className="hero">
-        <div className="hero-content">
-          <div className="badge">🎓 Built for students</div>
-
-          <h1>
-            Your university.
-            <br />
-            <span>Your community.</span>
-          </h1>
-
-          <p>
-            ADUSTECH Connect brings students together to connect,
-            communicate, study, share knowledge and build their
-            academic community.
-          </p>
-
-          <div className="hero-buttons">
-            <button className="primary large" onClick={goRegister}>
-              Get Started →
-            </button>
-
-            <button className="secondary large" onClick={goLogin}>
-              Log In
-            </button>
-          </div>
-
-          <div className="features">
-            <Feature
-              icon="🎓"
-              title="Academic"
-              text="Courses, programmes and academic resources."
-            />
-
-            <Feature
-              icon="👥"
-              title="Communities"
-              text="Join faculty, department and course groups."
-            />
-
-            <Feature
-              icon="💬"
-              title="Messenger"
-              text="Chat privately or communicate in groups."
-            />
-
-            <Feature
-              icon="📝"
-              title="Assignments"
-              text="Discuss assignments and share academic materials."
-            />
-          </div>
-        </div>
-      </main>
+      {showRegister ? (
+        <Register onBack={() => setShowRegister(false)} />
+      ) : showLogin ? (
+        <Login
+          onBack={() => setShowLogin(false)}
+          onRegister={() => {
+            setShowLogin(false);
+            setShowRegister(true);
+          }}
+        />
+      ) : (
+        <Home
+          onRegister={() => setShowRegister(true)}
+          onLogin={() => setShowLogin(true)}
+        />
+      )}
 
       <footer>
         <strong>ADUSTECH Connect</strong>
         <span>Student academic community platform</span>
       </footer>
-    </>
+
+    </div>
   );
 }
+
+
+/* =========================
+   HOME
+========================= */
+
+function Home({ onRegister, onLogin }) {
+  return (
+    <main className="hero">
+
+      <div className="hero-content">
+
+        <div className="badge">
+          🎓 Built for students
+        </div>
+
+        <h1>
+          Your university.
+          <br />
+          <span>Your community.</span>
+        </h1>
+
+        <p>
+          ADUSTECH Connect brings students together to connect,
+          communicate, study, share knowledge and build their
+          academic community.
+        </p>
+
+        <div className="hero-buttons">
+
+          <button
+            className="primary large"
+            onClick={onRegister}
+          >
+            Get Started →
+          </button>
+
+          <button
+            className="secondary large"
+            onClick={onLogin}
+          >
+            Log In
+          </button>
+
+        </div>
+
+        <div className="features">
+
+          <Feature
+            icon="🎓"
+            title="Academic"
+            text="Courses, programmes and academic resources."
+          />
+
+          <Feature
+            icon="👥"
+            title="Communities"
+            text="Join faculty, department and course groups."
+          />
+
+          <Feature
+            icon="💬"
+            title="Messenger"
+            text="Chat privately or communicate in groups."
+          />
+
+          <Feature
+            icon="📝"
+            title="Assignments"
+            text="Discuss assignments and share academic materials."
+          />
+
+        </div>
+
+      </div>
+
+    </main>
+  );
+}
+
 
 /* =========================
    REGISTER
 ========================= */
 
-function Register({ goBack, goLogin }) {
-  const [fullName, setFullName] = useState("");
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [matricNumber, setMatricNumber] = useState("");
-  const [password, setPassword] = useState("");
+function Register({ onBack }) {
 
-  const [institutions, setInstitutions] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [programmes, setProgrammes] = useState([]);
-  const [levels, setLevels] = useState([]);
 
-  const [institutionId, setInstitutionId] = useState("");
   const [facultyId, setFacultyId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [programmeId, setProgrammeId] = useState("");
-  const [levelId, setLevelId] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
 
-  /* Load institutions and levels */
+  const [form, setForm] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    matric_number: "",
+    level: ""
+  });
+
+
+  /* LOAD FACULTIES */
+
   useEffect(() => {
-    async function loadInitialData() {
-      setLoadingData(true);
 
-      const [institutionResult, levelResult] = await Promise.all([
-        supabase
-          .from("institutions")
-          .select("id, name, short_name")
-          .eq("is_active", true)
-          .order("name"),
+    async function loadFaculties() {
 
-        supabase
-          .from("levels")
-          .select("id, name")
-          .order("name"),
-      ]);
+      const { data, error } = await supabase
+        .from("faculties")
+        .select("id,name,abbreviation")
+        .eq(
+          "institution_id",
+          "ed465a1f-f79c-4aed-b9de-8c18d51d32b4"
+        )
+        .order("name");
 
-      if (institutionResult.error) {
-        setError(institutionResult.error.message);
-      } else {
-        setInstitutions(institutionResult.data || []);
+      if (error) {
+        console.error(error);
+        return;
       }
 
-      if (levelResult.error) {
-        setError(levelResult.error.message);
-      } else {
-        setLevels(levelResult.data || []);
-      }
-
-      setLoadingData(false);
+      setFaculties(data || []);
     }
 
-    loadInitialData();
+    loadFaculties();
+
   }, []);
 
-  /* Load faculties */
-  async function handleInstitutionChange(value) {
-    setInstitutionId(value);
 
-    setFacultyId("");
-    setDepartmentId("");
-    setProgrammeId("");
+  /* LOAD DEPARTMENTS */
 
-    setFaculties([]);
-    setDepartments([]);
-    setProgrammes([]);
+  useEffect(() => {
 
-    if (!value) return;
+    async function loadDepartments() {
 
-    const { data, error } = await supabase
-      .from("faculties")
-      .select("id, name, abbreviation")
-      .eq("institution_id", value)
-      .order("name");
+      if (!facultyId) {
+        setDepartments([]);
+        return;
+      }
 
-    if (error) {
-      setError(error.message);
-      return;
+      const { data, error } = await supabase
+        .from("departments")
+        .select("id,name,abbreviation")
+        .eq("faculty_id", facultyId)
+        .order("name");
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      setDepartments(data || []);
+
     }
 
-    setFaculties(data || []);
-  }
-
-  /* Load departments */
-  async function handleFacultyChange(value) {
-    setFacultyId(value);
+    loadDepartments();
 
     setDepartmentId("");
     setProgrammeId("");
-
-    setDepartments([]);
     setProgrammes([]);
 
-    if (!value) return;
+  }, [facultyId]);
 
-    const { data, error } = await supabase
-      .from("departments")
-      .select("id, name, abbreviation")
-      .eq("faculty_id", value)
-      .order("name");
 
-    if (error) {
-      setError(error.message);
-      return;
+  /* LOAD PROGRAMMES */
+
+  useEffect(() => {
+
+    async function loadProgrammes() {
+
+      if (!departmentId) {
+        setProgrammes([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("programmes")
+        .select(
+          "id,name,programme_code,degree_type,duration_years"
+        )
+        .eq("department_id", departmentId)
+        .order("name");
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      setProgrammes(data || []);
+
     }
 
-    setDepartments(data || []);
-  }
-
-  /* Load programmes */
-  async function handleDepartmentChange(value) {
-    setDepartmentId(value);
+    loadProgrammes();
 
     setProgrammeId("");
-    setProgrammes([]);
 
-    if (!value) return;
+  }, [departmentId]);
 
-    const { data, error } = await supabase
-      .from("programmes")
-      .select(
-        "id, name, programme_code, degree_type, duration_years"
-      )
-      .eq("department_id", value)
-      .order("name");
 
-    if (error) {
-      setError(error.message);
-      return;
-    }
+  /* UPDATE FORM */
 
-    setProgrammes(data || []);
+  function updateForm(e) {
+
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
+    });
+
   }
 
-  async function handleRegister(event) {
-    event.preventDefault();
 
-    setError("");
-    setMessage("");
+  /* SIGN UP */
+
+  async function handleRegister(e) {
+
+    e.preventDefault();
 
     if (
-      !fullName ||
-      !username ||
-      !email ||
-      !phone ||
-      !matricNumber ||
-      !password ||
-      !institutionId ||
       !facultyId ||
       !departmentId ||
       !programmeId ||
-      !levelId
+      !form.level
     ) {
-      setError("Please complete every field.");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must contain at least 6 characters.");
+      alert("Please complete your academic information.");
       return;
     }
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        data: {
-          full_name: fullName.trim(),
-          username: username.trim(),
-          phone: phone.trim(),
-          matric_number: matricNumber.trim(),
-          institution_id: institutionId,
+    try {
+
+      const {
+        data: authData,
+        error: authError
+      } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: {
+            full_name: form.full_name
+          }
+        }
+      });
+
+      if (authError) {
+        throw authError;
+      }
+
+      const userId = authData.user?.id;
+
+      if (!userId) {
+        throw new Error("Account was not created.");
+      }
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: userId,
+          full_name: form.full_name,
+          email: form.email,
+          matric_number: form.matric_number,
+          institution_id:
+            "ed465a1f-f79c-4aed-b9de-8c18d51d32b4",
           faculty_id: facultyId,
           department_id: departmentId,
           programme_id: programmeId,
-          level_id: levelId,
-        },
-      },
-    });
+          level_id: form.level,
+          is_student: true,
+          is_verified: false,
+          verification_status: "pending"
+        });
 
-    setLoading(false);
+      if (profileError) {
+        throw profileError;
+      }
 
-    if (error) {
-      setError(error.message);
-      return;
+      alert(
+        "Account created successfully! Check your email to verify your account."
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        error.message ||
+        "Unable to create your account."
+      );
+
+    } finally {
+
+      setLoading(false);
+
     }
 
-    setMessage(
-      "Account created successfully! Check your email to confirm your account before logging in."
-    );
   }
 
-  if (message) {
-    return (
-      <div className="page">
-        <div className="auth-card">
-          <div className="brand">
-            <div className="logo">A</div>
-            <h1>ADUSTECH Connect</h1>
-          </div>
-
-          <div style={{ fontSize: "50px", margin: "20px 0" }}>
-            📧
-          </div>
-
-          <h2>Check your email</h2>
-
-          <p>{message}</p>
-
-          <button className="primary" onClick={goLogin}>
-            Go to Log In
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="page">
+    <main className="page">
+
       <div className="auth-card">
-        <button className="back" onClick={goBack}>
+
+        <button
+          className="back"
+          onClick={onBack}
+        >
           ← Back
         </button>
 
@@ -359,209 +372,235 @@ function Register({ goBack, goLogin }) {
         </div>
 
         <h2>Create your account</h2>
-        <p>Join the academic community of students.</p>
 
-        {error && (
-          <div
-            style={{
-              background: "#fee2e2",
-              color: "#991b1b",
-              padding: "12px",
-              borderRadius: "8px",
-              marginBottom: "15px",
-            }}
-          >
-            {error}
-          </div>
-        )}
+        <p>
+          Join the academic community of students.
+        </p>
 
         <form onSubmit={handleRegister}>
+
           <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            name="full_name"
             placeholder="Full name"
+            value={form.full_name}
+            onChange={updateForm}
+            required
           />
 
           <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
-          />
-
-          <input
+            name="email"
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             placeholder="Student email"
+            value={form.email}
+            onChange={updateForm}
+            required
           />
 
           <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone number"
+            name="matric_number"
+            placeholder="Matric number"
+            value={form.matric_number}
+            onChange={updateForm}
+            required
           />
 
           <input
-            value={matricNumber}
-            onChange={(e) => setMatricNumber(e.target.value)}
-            placeholder="Matriculation number"
-          />
-
-          <input
+            name="password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
+            value={form.password}
+            onChange={updateForm}
+            required
+            minLength={6}
           />
 
-          <select
-            value={institutionId}
-            onChange={(e) => handleInstitutionChange(e.target.value)}
-            disabled={loadingData}
-          >
-            <option value="">
-              {loadingData
-                ? "Loading institutions..."
-                : "Select institution"}
-            </option>
 
-            {institutions.map((institution) => (
-              <option key={institution.id} value={institution.id}>
-                {institution.name}
-                {institution.short_name
-                  ? ` (${institution.short_name})`
-                  : ""}
-              </option>
-            ))}
-          </select>
+          {/* FACULTY */}
 
           <select
             value={facultyId}
-            onChange={(e) => handleFacultyChange(e.target.value)}
-            disabled={!institutionId}
+            onChange={(e) =>
+              setFacultyId(e.target.value)
+            }
+            required
           >
-            <option value="">Select faculty</option>
+
+            <option value="">
+              Select Faculty
+            </option>
 
             {faculties.map((faculty) => (
-              <option key={faculty.id} value={faculty.id}>
+
+              <option
+                key={faculty.id}
+                value={faculty.id}
+              >
                 {faculty.name}
-                {faculty.abbreviation
-                  ? ` (${faculty.abbreviation})`
-                  : ""}
               </option>
+
             ))}
+
           </select>
+
+
+          {/* DEPARTMENT */}
 
           <select
             value={departmentId}
-            onChange={(e) => handleDepartmentChange(e.target.value)}
+            onChange={(e) =>
+              setDepartmentId(e.target.value)
+            }
             disabled={!facultyId}
+            required
           >
-            <option value="">Select department</option>
+
+            <option value="">
+              {facultyId
+                ? "Select Department"
+                : "Select Faculty First"}
+            </option>
 
             {departments.map((department) => (
-              <option key={department.id} value={department.id}>
+
+              <option
+                key={department.id}
+                value={department.id}
+              >
                 {department.name}
-                {department.abbreviation
-                  ? ` (${department.abbreviation})`
-                  : ""}
               </option>
+
             ))}
+
           </select>
+
+
+          {/* PROGRAMME */}
 
           <select
             value={programmeId}
-            onChange={(e) => setProgrammeId(e.target.value)}
+            onChange={(e) =>
+              setProgrammeId(e.target.value)
+            }
             disabled={!departmentId}
+            required
           >
-            <option value="">Select programme</option>
+
+            <option value="">
+              {departmentId
+                ? "Select Programme"
+                : "Select Department First"}
+            </option>
 
             {programmes.map((programme) => (
-              <option key={programme.id} value={programme.id}>
+
+              <option
+                key={programme.id}
+                value={programme.id}
+              >
                 {programme.name}
-                {programme.programme_code
-                  ? ` — ${programme.programme_code}`
-                  : ""}
               </option>
+
             ))}
+
           </select>
+
+
+          {/* LEVEL */}
 
           <select
-            value={levelId}
-            onChange={(e) => setLevelId(e.target.value)}
+            name="level"
+            value={form.level}
+            onChange={updateForm}
+            required
           >
-            <option value="">Select level</option>
 
-            {levels.map((level) => (
-              <option key={level.id} value={level.id}>
-                {level.name}
-              </option>
-            ))}
+            <option value="">
+              Select Level
+            </option>
+
+            <option value="100">
+              100 Level
+            </option>
+
+            <option value="200">
+              200 Level
+            </option>
+
+            <option value="300">
+              300 Level
+            </option>
+
+            <option value="400">
+              400 Level
+            </option>
+
+            <option value="500">
+              500 Level
+            </option>
+
+            <option value="600">
+              600 Level
+            </option>
+
           </select>
 
+
           <button
-            type="submit"
             className="primary"
+            type="submit"
             disabled={loading}
           >
-            {loading ? "Creating account..." : "Create Account"}
+            {loading
+              ? "Creating Account..."
+              : "Create Account"}
           </button>
+
         </form>
 
-        <p className="switch">
-          Already have an account?{" "}
-          <button onClick={goLogin}>Log in</button>
-        </p>
       </div>
-    </div>
+
+    </main>
   );
 }
+
 
 /* =========================
    LOGIN
 ========================= */
 
-function Login({ goBack, goRegister }) {
+function Login({ onBack, onRegister }) {
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  async function handleLogin(e) {
 
-  async function handleLogin(event) {
-    event.preventDefault();
+    e.preventDefault();
 
-    setError("");
-    setSuccess("");
-
-    if (!email || !password) {
-      setError("Enter your email and password.");
-      return;
-    }
-
-    setLoading(true);
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-
-    setLoading(false);
+    const { error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
     if (error) {
-      setError(error.message);
+      alert(error.message);
       return;
     }
 
-    setSuccess("Login successful. Welcome to ADUSTECH Connect!");
+    alert("Login successful!");
+
   }
 
   return (
-    <div className="page">
+    <main className="page">
+
       <div className="auth-card">
-        <button className="back" onClick={goBack}>
+
+        <button
+          className="back"
+          onClick={onBack}
+        >
           ← Back
         </button>
 
@@ -571,79 +610,75 @@ function Login({ goBack, goRegister }) {
         </div>
 
         <h2>Welcome back</h2>
-        <p>Log in to continue to your student community.</p>
 
-        {error && (
-          <div
-            style={{
-              background: "#fee2e2",
-              color: "#991b1b",
-              padding: "12px",
-              borderRadius: "8px",
-              marginBottom: "15px",
-            }}
-          >
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div
-            style={{
-              background: "#dcfce7",
-              color: "#166534",
-              padding: "12px",
-              borderRadius: "8px",
-              marginBottom: "15px",
-            }}
-          >
-            {success}
-          </div>
-        )}
+        <p>
+          Log in to continue to your student community.
+        </p>
 
         <form onSubmit={handleLogin}>
+
           <input
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             placeholder="Student email"
+            value={email}
+            onChange={(e) =>
+              setEmail(e.target.value)
+            }
+            required
           />
 
           <input
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
+            value={password}
+            onChange={(e) =>
+              setPassword(e.target.value)
+            }
+            required
           />
 
           <button
-            type="submit"
             className="primary"
-            disabled={loading}
+            type="submit"
           >
-            {loading ? "Logging in..." : "Log In"}
+            Log In
           </button>
+
         </form>
 
         <p className="switch">
           Don't have an account?{" "}
-          <button onClick={goRegister}>Create one</button>
+
+          <button onClick={onRegister}>
+            Create one
+          </button>
         </p>
+
       </div>
-    </div>
+
+    </main>
   );
 }
+
 
 /* =========================
    FEATURE
 ========================= */
 
 function Feature({ icon, title, text }) {
+
   return (
     <div className="feature">
-      <div className="feature-icon">{icon}</div>
+
+      <div className="feature-icon">
+        {icon}
+      </div>
+
       <h3>{title}</h3>
+
       <p>{text}</p>
+
     </div>
   );
-      }
+
+               }
