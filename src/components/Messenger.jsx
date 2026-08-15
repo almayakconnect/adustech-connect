@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Send, Image, Mic, Square, Paperclip, CheckCheck, Loader2 } from 'lucide-react';
+import { 
+  Search, Camera, MoreVertical, Archive, CheckCheck, 
+  Send, Image as ImageIcon, Mic, MessageSquarePlus, 
+  Users, Phone, CircleD触
+} from 'lucide-react';
 
 export default function Messenger({ session }) {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [mediaFile, setMediaFile] = useState(null);
-  const [mediaType, setMediaType] = useState(null);
   const [uploading, setUploading] = useState(false);
-  
-  // Voice Recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -23,8 +21,7 @@ export default function Messenger({ session }) {
   useEffect(() => {
     if (selectedUser) {
       fetchMessages(selectedUser.id);
-      
-      // Realtime subscription for instant messaging
+
       const subscription = supabase
         .channel(`chat:${session.user.id}-${selectedUser.id}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
@@ -65,83 +62,22 @@ export default function Messenger({ session }) {
     if (data) setMessages(data);
   };
 
-  const handleMediaSelect = (e, type) => {
-    const file = e.target.files[0];
-    if (file) {
-      setMediaFile(file);
-      setMediaType(type);
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks = [];
-
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const file = new File([blob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
-        setMediaFile(file);
-        setMediaType('audio');
-      };
-
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-    } catch (err) {
-      alert('Microphone access is required to record voice notes.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-      setIsRecording(false);
-    }
-  };
-
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if ((!newMessage.trim() && !mediaFile) || !selectedUser) return;
+    if (!newMessage.trim() || !selectedUser) return;
 
     setUploading(true);
-    let mediaUrl = null;
-
     try {
-      if (mediaFile) {
-        const fileExt = mediaFile.name.split('.').pop();
-        const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('posts')
-          .upload(fileName, mediaFile);
+      const payload = {
+        sender_id: session.user.id,
+        receiver_id: selectedUser.id,
+        content: newMessage.trim(),
+      };
 
-        if (uploadError) throw uploadError;
-
-        const { data: publicUrlData } = supabase.storage
-          .from('posts')
-          .getPublicUrl(fileName);
-
-        mediaUrl = publicUrlData.publicUrl;
-      }
-
-      const { error } = await supabase.from('messages').insert([
-        {
-          sender_id: session.user.id,
-          receiver_id: selectedUser.id,
-          content: newMessage,
-          media_url: mediaUrl,
-          media_type: mediaType,
-        },
-      ]);
-
+      const { error } = await supabase.from('messages').insert([payload]);
       if (error) throw error;
 
       setNewMessage('');
-      setMediaFile(null);
-      setMediaType(null);
       fetchMessages(selectedUser.id);
     } catch (err) {
       alert('Failed to send message: ' + err.message);
@@ -151,144 +87,152 @@ export default function Messenger({ session }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 h-[650px] flex overflow-hidden">
-      
-      {/* WhatsApp Sidebar - User List */}
-      <div className="w-full md:w-1/3 border-r border-slate-200 flex flex-col bg-slate-50/50">
-        <div className="p-4 border-b border-slate-200 bg-white">
-          <h2 className="font-bold text-sm text-slate-800">Messages</h2>
-          <p className="text-[11px] text-slate-500">Connect with ADUSTECH students</p>
-        </div>
-
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-          {users.map((u) => (
-            <button
-              key={u.id}
-              onClick={() => setSelectedUser(u)}
-              className={`w-full p-3.5 flex items-center gap-3 transition text-left hover:bg-slate-100/80 ${
-                selectedUser?.id === u.id ? 'bg-emerald-50/80 border-l-4 border-emerald-600' : ''
-              }`}
-            >
-              <div className="w-10 h-10 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
-                {u.full_name ? u.full_name[0] : 'U'}
-              </div>
-              <div className="overflow-hidden flex-1">
-                <h4 className="font-semibold text-xs text-slate-800 truncate">{u.full_name || 'Student'}</h4>
-                <p className="text-[10px] text-slate-500 truncate">{u.department || 'ADUSTECH Student'}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Main Chat Stream */}
-      <div className="hidden md:flex flex-1 flex-col bg-[#efeae2]/30">
-        {selectedUser ? (
-          <>
-            {/* Active Contact Header */}
-            <div className="p-3 bg-white border-b border-slate-200 flex items-center gap-3 shadow-sm">
-              <div className="w-9 h-9 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-xs">
+    <div className="bg-[#0b141a] text-[#e9edef] min-h-screen flex flex-col max-w-md mx-auto relative border-x border-[#222d34]">
+      {selectedUser ? (
+        /* Active Chat View */
+        <div className="flex flex-col h-screen">
+          {/* WhatsApp Chat Header */}
+          <div className="bg-[#202c33] px-3 py-2 flex items-center justify-between border-b border-[#222d34]">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setSelectedUser(null)} className="text-[#8696a0] text-xl font-bold">
+                ←
+              </button>
+              <div className="w-9 h-9 rounded-full bg-[#00a884] text-white flex items-center justify-center font-bold text-sm">
                 {selectedUser.full_name ? selectedUser.full_name[0] : 'U'}
               </div>
               <div>
-                <h3 className="font-bold text-xs text-slate-800">{selectedUser.full_name}</h3>
-                <p className="text-[10px] text-emerald-600 font-medium">{selectedUser.department || 'Active now'}</p>
+                <h3 className="text-sm font-semibold text-[#e9edef]">{selectedUser.full_name || 'Student'}</h3>
+                <p className="text-[10px] text-[#8696a0]">{selectedUser.department || 'ADUSTECH'}</p>
               </div>
             </div>
+            <div className="flex items-center gap-4 text-[#8696a0]">
+              <Phone className="w-5 h-5 cursor-pointer" />
+              <MoreVertical className="w-5 h-5 cursor-pointer" />
+            </div>
+          </div>
 
-            {/* Conversation Window */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {messages.map((msg) => {
-                const isMe = msg.sender_id === session.user.id;
-                return (
-                  <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[75%] rounded-2xl p-3 text-xs shadow-sm space-y-1.5 ${
-                        isMe ? 'bg-emerald-700 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-200/60'
-                      }`}
-                    >
-                      {msg.content && <p className="leading-relaxed">{msg.content}</p>}
-
-                      {msg.media_url && msg.media_type === 'image' && (
-                        <img src={msg.media_url} alt="Attachment" className="rounded-lg max-h-48 object-cover w-full" />
-                      )}
-
-                      {msg.media_url && msg.media_type === 'audio' && (
-                        <audio controls className="w-full min-w-[200px]">
-                          <source src={msg.media_url} />
-                        </audio>
-                      )}
-
-                      <div className={`text-[9px] flex items-center justify-end gap-1 ${isMe ? 'text-emerald-200' : 'text-slate-400'}`}>
-                        <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        {isMe && <CheckCheck className="w-3 h-3" />}
-                      </div>
+          {/* Chat Messages */}
+          <div className="flex-1 bg-[#0b141a] p-4 overflow-y-auto space-y-2 bg-[radial-gradient(#202c33_1px,transparent_1px)] [background-size:16px_16px]">
+            {messages.map((msg) => {
+              const isMe = msg.sender_id === session.user.id;
+              return (
+                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-[80%] rounded-lg px-3 py-1.5 text-xs shadow-sm ${
+                      isMe ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-none' : 'bg-[#202c33] text-[#e9edef] rounded-tl-none'
+                    }`}
+                  >
+                    <p className="leading-relaxed">{msg.content}</p>
+                    <div className="text-[9px] text-[#8696a0] flex items-center justify-end gap-1 mt-1">
+                      <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      {isMe && <CheckCheck className="w-3 h-3 text-[#53bdeb]" />}
                     </div>
                   </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Message Input */}
+          <form onSubmit={handleSendMessage} className="bg-[#202c33] p-2 flex items-center gap-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Message"
+              className="flex-1 bg-[#2a3942] text-[#e9edef] placeholder-[#8696a0] rounded-full px-4 py-2 text-xs border-none outline-none"
+            />
+            <button
+              type="submit"
+              disabled={uploading || !newMessage.trim()}
+              className="bg-[#00a884] text-white p-2.5 rounded-full hover:bg-[#008f6f] disabled:opacity-50"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
+      ) : (
+        /* WhatsApp Chat List View */
+        <div className="flex flex-col h-screen">
+          {/* Header */}
+          <div className="bg-[#111b21] p-4 pb-2">
+            <div className="flex justify-between items-center mb-3">
+              <h1 className="text-xl font-bold text-[#e9edef]">WhatsApp</h1>
+              <div className="flex items-center gap-5 text-[#8696a0]">
+                <Camera className="w-5 h-5 cursor-pointer" />
+                <MoreVertical className="w-5 h-5 cursor-pointer" />
+              </div>
             </div>
 
-            {/* Media Preview Attachment Banner */}
-            {mediaFile && (
-              <div className="px-4 py-2 bg-emerald-50 border-t border-emerald-200 flex justify-between items-center text-xs text-emerald-800">
-                <span className="font-medium truncate max-w-[250px]">Attached: {mediaFile.name}</span>
-                <button onClick={() => { setMediaFile(null); setMediaType(null); }} className="text-red-500 font-bold ml-2">Remove</button>
-              </div>
-            )}
-
-            {/* Message Input Bar */}
-            <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
-              <label className="p-2 text-slate-500 hover:text-emerald-600 rounded-full hover:bg-slate-100 cursor-pointer transition">
-                <Image className="w-5 h-5" />
-                <input type="file" accept="image/*" onChange={(e) => handleMediaSelect(e, 'image')} className="hidden" />
-              </label>
-
-              {isRecording ? (
-                <button
-                  type="button"
-                  onClick={stopRecording}
-                  className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-full animate-pulse transition flex items-center gap-1 text-xs font-bold"
-                >
-                  <Square className="w-4 h-4 fill-red-600" />
-                  <span>Recording...</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={startRecording}
-                  className="p-2 text-slate-500 hover:text-emerald-600 rounded-full hover:bg-slate-100 transition"
-                  title="Voice Note"
-                >
-                  <Mic className="w-5 h-5" />
-                </button>
-              )}
-
+            {/* Search Bar */}
+            <div className="bg-[#202c33] rounded-full flex items-center px-4 py-2 gap-3 text-[#8696a0]">
+              <Search className="w-4 h-4" />
               <input
                 type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type a message..."
-                className="flex-1 bg-slate-100 hover:bg-slate-100 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 border border-slate-200 rounded-full px-4 py-2 text-xs text-slate-800 outline-none transition"
+                placeholder="Ask Meta AI or Search"
+                className="bg-transparent text-xs text-[#e9edef] placeholder-[#8696a0] outline-none w-full"
               />
-
-              <button
-                type="submit"
-                disabled={uploading || (!newMessage.trim() && !mediaFile)}
-                className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white p-2.5 rounded-full transition flex items-center justify-center"
-              >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </button>
-            </form>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
-            <p className="text-sm font-semibold">Select a student from the sidebar to begin chatting</p>
+            </div>
           </div>
-        )}
-      </div>
 
+          {/* Archived Row */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#222d34] text-[#8696a0] text-xs font-medium cursor-pointer">
+            <div className="flex items-center gap-4">
+              <Archive className="w-4 h-4" />
+              <span>Archived</span>
+            </div>
+            <span className="text-[#00a884] font-bold text-[11px]">8</span>
+          </div>
+
+          {/* Chat List */}
+          <div className="flex-1 overflow-y-auto divide-y divide-[#222d34]/40">
+            {users.map((u) => (
+              <div
+                key={u.id}
+                onClick={() => setSelectedUser(u)}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[#202c33] cursor-pointer"
+              >
+                <div className="w-12 h-12 rounded-full bg-[#00a884] text-white flex items-center justify-center font-bold text-base flex-shrink-0">
+                  {u.full_name ? u.full_name[0] : 'U'}
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <div className="flex justify-between items-center mb-0.5">
+                    <h3 className="text-sm font-semibold text-[#e9edef] truncate">{u.full_name || 'ADUSTECH Student'}</h3>
+                    <span className="text-[10px] text-[#8696a0]">10:58 AM</span>
+                  </div>
+                  <p className="text-xs text-[#8696a0] truncate">{u.department || 'Click to start conversation'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Floating Action Button */}
+          <button className="absolute bottom-16 right-4 bg-[#00a884] text-[#111b21] p-3.5 rounded-2xl shadow-lg font-bold">
+            <MessageSquarePlus className="w-6 h-6" />
+          </button>
+
+          {/* Bottom Navigation */}
+          <div className="bg-[#111b21] border-t border-[#222d34] flex justify-around py-2 text-[11px] text-[#8696a0]">
+            <button className="flex flex-col items-center gap-1 text-[#00a884] font-semibold">
+              <div className="bg-[#103629] px-4 py-1 rounded-full">💬</div>
+              <span>Chats</span>
+            </button>
+            <button className="flex flex-col items-center gap-1">
+              <div>⭕</div>
+              <span>Updates</span>
+            </button>
+            <button className="flex flex-col items-center gap-1">
+              <div>👥</div>
+              <span>Communities</span>
+            </button>
+            <button className="flex flex-col items-center gap-1">
+              <div>📞</div>
+              <span>Calls</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
