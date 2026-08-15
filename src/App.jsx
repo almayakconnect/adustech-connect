@@ -1,160 +1,365 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import Messenger from './components/Messenger';
 import { 
-  Home, Users, MessageCircle, PlaySquare, Bell, Store, 
-  Plus, Search, Menu, Image as ImageIcon, ThumbsUp, MessageSquare, Share2, MoreHorizontal, X 
+  Search, 
+  Home, 
+  Users, 
+  MessageCircle, 
+  BookOpen, 
+  Bell, 
+  User, 
+  LogOut, 
+  Menu, 
+  X,
+  Bot
 } from 'lucide-react';
+
+import Auth from './components/Auth';
+import CreatePost from './components/CreatePost';
+import PostCard from './components/PostCard';
+import Messenger from './components/Messenger';
+import AcademicHub from './components/AcademicHub';
+import UserProfile from './components/UserProfile';
+import NotificationsPopover from './components/NotificationsPopover';
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const [activeTab, setActiveTab] = useState('feed');
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'messenger' | 'resources' | 'settings'
   const [posts, setPosts] = useState([]);
-  const [newPost, setNewPost] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    supabase.auth.onAuthStateChange((_event, session) => setSession(session));
-    fetchPosts();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const fetchPosts = async () => {
-    const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-    if (data) setPosts(data);
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles (full_name, avatar_url, department),
+          likes (user_id),
+          comments (
+            id,
+            content,
+            created_at,
+            user_id,
+            profiles (full_name, avatar_url)
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPosts(data || []);
+    } catch (err) {
+      console.error('Error fetching posts:', err);
+    }
   };
 
-  const handleCreatePost = async (e) => {
-    e.preventDefault();
-    if (!newPost.trim()) return;
-    await supabase.from('posts').insert([{ content: newPost, user_id: session?.user?.id }]);
-    setNewPost('');
-    fetchPosts();
+  useEffect(() => {
+    if (session && activeTab === 'feed') {
+      fetchPosts();
+    }
+  }, [session, activeTab]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
-  if (!session) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#18191a] text-white flex flex-col items-center justify-center p-4">
-        <h1 className="text-3xl font-bold text-[#1877f2] mb-4">facebook</h1>
-        <button 
-          onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} 
-          className="bg-[#1877f2] text-white px-6 py-2.5 rounded-lg font-bold text-sm"
-        >
-          Log In with Google
-        </button>
+      <div className="flex h-screen w-screen items-center justify-center bg-[#f0f2f5]">
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1877f2] border-t-transparent"></div>
+        </div>
       </div>
     );
   }
 
+  if (!session) {
+    return <Auth />;
+  }
+
   return (
-    <div className="bg-[#f0f2f5] min-h-screen">
-      {/* Facebook Top Navigation */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-md mx-auto px-4 py-2 flex items-center justify-between">
-          <h1 className="text-2xl font-black text-[#1877f2] tracking-tight">facebook</h1>
-          <div className="flex items-center gap-2">
-            <button className="p-2 bg-gray-100 rounded-full text-black"><Plus className="w-5 h-5" /></button>
-            <button className="p-2 bg-gray-100 rounded-full text-black"><Search className="w-5 h-5" /></button>
-            <button className="p-2 bg-gray-100 rounded-full text-black"><Menu className="w-5 h-5" /></button>
+    <div className="min-h-screen bg-[#f0f2f5] text-[#050505] antialiased">
+      {/* --- FACEBOOK TOP NAVIGATION BAR --- */}
+      <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[#e4e6eb] bg-white px-4 shadow-xs">
+        {/* Left: Brand & Search Bar */}
+        <div className="flex items-center gap-2">
+          <div 
+            onClick={() => setActiveTab('feed')}
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#1877f2] font-black text-2xl text-white select-none"
+          >
+            a
+          </div>
+          <div className="relative hidden md:block">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#65676b]" />
+            <input
+              type="text"
+              placeholder="Search ADUSTECH Connect"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 rounded-full bg-[#f0f2f5] pl-9 pr-4 text-xs focus:outline-hidden w-60"
+            />
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="max-w-md mx-auto flex justify-around border-t border-gray-100 text-gray-500">
-          <button onClick={() => setActiveTab('feed')} className={`p-3 relative ${activeTab === 'feed' ? 'text-[#1877f2] border-b-2 border-[#1877f2]' : ''}`}>
-            <Home className="w-6 h-6" />
-            <span className="absolute top-1 right-2 bg-red-500 text-white text-[9px] font-bold px-1 rounded-full">15+</span>
+        {/* Center: Main App Tabs (Facebook Navigation Center) */}
+        <nav className="hidden md:flex h-full items-center gap-1">
+          <button
+            onClick={() => setActiveTab('feed')}
+            className={`flex h-full w-24 items-center justify-center border-b-4 transition-colors ${
+              activeTab === 'feed'
+                ? 'border-[#1877f2] text-[#1877f2]'
+                : 'border-transparent text-[#65676b] hover:bg-[#f0f2f5]'
+            }`}
+            title="Home"
+          >
+            <Home className="h-6 w-6" />
           </button>
-          <button className="p-3"><Users className="w-6 h-6" /></button>
-          <button onClick={() => setActiveTab('messenger')} className={`p-3 relative ${activeTab === 'messenger' ? 'text-[#1877f2] border-b-2 border-[#1877f2]' : ''}`}>
-            <MessageCircle className="w-6 h-6" />
+
+          <button
+            onClick={() => setActiveTab('resources')}
+            className={`flex h-full w-24 items-center justify-center border-b-4 transition-colors ${
+              activeTab === 'resources'
+                ? 'border-[#1877f2] text-[#1877f2]'
+                : 'border-transparent text-[#65676b] hover:bg-[#f0f2f5]'
+            }`}
+            title="Academic Resources & Materials"
+          >
+            <BookOpen className="h-6 w-6" />
           </button>
-          <button className="p-3 relative">
-            <PlaySquare className="w-6 h-6" />
-            <span className="absolute top-1 right-2 bg-red-500 text-white text-[9px] font-bold px-1 rounded-full">15+</span>
+
+          <button
+            onClick={() => setActiveTab('messenger')}
+            className={`flex h-full w-24 items-center justify-center border-b-4 transition-colors ${
+              activeTab === 'messenger'
+                ? 'border-[#1877f2] text-[#1877f2]'
+                : 'border-transparent text-[#65676b] hover:bg-[#f0f2f5]'
+            }`}
+            title="Messenger & AI Assistant"
+          >
+            <MessageCircle className="h-6 w-6" />
           </button>
-          <button className="p-3"><Bell className="w-6 h-6" /></button>
-          <button className="p-3"><Store className="w-6 h-6" /></button>
+        </nav>
+
+        {/* Right: Quick Action Controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('messenger')}
+            className={`flex h-10 w-10 items-center justify-center rounded-full bg-[#e4e6eb] hover:bg-[#d8dadf] transition-colors ${
+              activeTab === 'messenger' ? 'text-[#1877f2]' : 'text-[#050505]'
+            }`}
+            title="Messenger"
+          >
+            <MessageCircle className="h-5 w-5" />
+          </button>
+
+          <NotificationsPopover session={session} />
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e4e6eb] hover:bg-[#d8dadf] text-[#050505] transition-colors"
+            title="Profile & Settings"
+          >
+            <User className="h-5 w-5" />
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full bg-[#e4e6eb] hover:bg-[#d8dadf] text-red-600 transition-colors"
+            title="Log Out"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+
+          {/* Mobile Menu Trigger */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e4e6eb] md:hidden"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      {activeTab === 'messenger' ? (
-        <Messenger session={session} />
-      ) : (
-        <main className="max-w-md mx-auto pb-12">
-          {/* Post Composer */}
-          <div className="bg-white p-3 border-b border-gray-200 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-slate-300 overflow-hidden flex-shrink-0">
-              <img src="https://via.placeholder.com/40" alt="Avatar" className="w-full h-full object-cover" />
+      {/* --- MOBILE NAVIGATION DRAWER --- */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-x-0 top-14 z-40 bg-white border-b border-[#e4e6eb] p-4 md:hidden space-y-2">
+          <button
+            onClick={() => { setActiveTab('feed'); setMobileMenuOpen(false); }}
+            className={`flex w-full items-center gap-3 rounded-lg p-3 text-sm font-semibold ${
+              activeTab === 'feed' ? 'bg-[#e7f3ff] text-[#1877f2]' : 'hover:bg-[#f0f2f5]'
+            }`}
+          >
+            <Home className="h-5 w-5" /> Home
+          </button>
+          <button
+            onClick={() => { setActiveTab('resources'); setMobileMenuOpen(false); }}
+            className={`flex w-full items-center gap-3 rounded-lg p-3 text-sm font-semibold ${
+              activeTab === 'resources' ? 'bg-[#e7f3ff] text-[#1877f2]' : 'hover:bg-[#f0f2f5]'
+            }`}
+          >
+            <BookOpen className="h-5 w-5" /> Academic Hub
+          </button>
+          <button
+            onClick={() => { setActiveTab('messenger'); setMobileMenuOpen(false); }}
+            className={`flex w-full items-center gap-3 rounded-lg p-3 text-sm font-semibold ${
+              activeTab === 'messenger' ? 'bg-[#e7f3ff] text-[#1877f2]' : 'hover:bg-[#f0f2f5]'
+            }`}
+          >
+            <MessageCircle className="h-5 w-5" /> Messenger & AI
+          </button>
+          <button
+            onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+            className={`flex w-full items-center gap-3 rounded-lg p-3 text-sm font-semibold ${
+              activeTab === 'settings' ? 'bg-[#e7f3ff] text-[#1877f2]' : 'hover:bg-[#f0f2f5]'
+            }`}
+          >
+            <User className="h-5 w-5" /> Profile & Settings
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg p-3 text-sm font-semibold text-red-600 hover:bg-red-50"
+          >
+            <LogOut className="h-5 w-5" /> Log Out
+          </button>
+        </div>
+      )}
+
+      {/* --- THREE-COLUMN FACEBOOK BODY LAYOUT --- */}
+      <div className="flex justify-between px-4 pt-4 max-w-[1920px] mx-auto gap-8">
+        
+        {/* LEFT SIDEBAR (Desktop Facebook Navigation) */}
+        <aside className="hidden xl:block w-72 shrink-0 sticky top-18 h-[calc(100vh-80px)] overflow-y-auto space-y-1 text-xs font-semibold">
+          <button
+            onClick={() => setActiveTab('settings')}
+            className="flex w-full items-center gap-3 rounded-lg p-2.5 hover:bg-[#e4e6eb] transition-colors"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877f2] text-white font-bold">
+              {session.user.email?.[0].toUpperCase()}
             </div>
-            <form onSubmit={handleCreatePost} className="flex-1 flex gap-2">
-              <input
-                type="text"
-                value={newPost}
-                onChange={(e) => setNewPost(e.target.value)}
-                placeholder="What's on your mind?"
-                className="w-full bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full text-xs text-black outline-none"
-              />
-            </form>
-            <button className="flex items-center gap-1 text-green-600 text-xs font-semibold">
-              <ImageIcon className="w-5 h-5" /> Photo
+            <span className="truncate">{session.user.email}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('feed')}
+            className={`flex w-full items-center gap-3 rounded-lg p-2.5 transition-colors ${
+              activeTab === 'feed' ? 'bg-[#e7f3ff] text-[#1877f2]' : 'hover:bg-[#e4e6eb]'
+            }`}
+          >
+            <Home className="h-6 w-6 text-[#1877f2]" />
+            <span>Feed</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('resources')}
+            className={`flex w-full items-center gap-3 rounded-lg p-2.5 transition-colors ${
+              activeTab === 'resources' ? 'bg-[#e7f3ff] text-[#1877f2]' : 'hover:bg-[#e4e6eb]'
+            }`}
+          >
+            <BookOpen className="h-6 w-6 text-[#1877f2]" />
+            <span>Academic Hub & Materials</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('messenger')}
+            className={`flex w-full items-center gap-3 rounded-lg p-2.5 transition-colors ${
+              activeTab === 'messenger' ? 'bg-[#e7f3ff] text-[#1877f2]' : 'hover:bg-[#e4e6eb]'
+            }`}
+          >
+            <MessageCircle className="h-6 w-6 text-[#1877f2]" />
+            <span>Messenger & AI Assistant</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex w-full items-center gap-3 rounded-lg p-2.5 transition-colors ${
+              activeTab === 'settings' ? 'bg-[#e7f3ff] text-[#1877f2]' : 'hover:bg-[#e4e6eb]'
+            }`}
+          >
+            <User className="h-6 w-6 text-[#65676b]" />
+            <span>Profile Settings</span>
+          </button>
+        </aside>
+
+        {/* CENTER COLUMN (Main Feed / Sub-views) */}
+        <main className="flex-1 max-w-[680px] mx-auto min-w-0">
+          {activeTab === 'messenger' ? (
+            <Messenger session={session} />
+          ) : activeTab === 'resources' ? (
+            <AcademicHub session={session} defaultCategory="all" />
+          ) : activeTab === 'settings' ? (
+            <UserProfile session={session} />
+          ) : (
+            <div className="space-y-4">
+              {/* Facebook Create Post Section */}
+              <CreatePost session={session} onPostCreated={fetchPosts} />
+
+              {/* Feed List */}
+              {posts.length === 0 ? (
+                <div className="rounded-xl border border-[#e4e6eb] bg-white p-8 text-center text-xs text-[#65676b] shadow-xs">
+                  No posts on the campus feed yet. Share something with ADUSTECH!
+                </div>
+              ) : (
+                posts.map((post) => (
+                  <PostCard 
+                    key={post.id} 
+                    post={post} 
+                    session={session} 
+                    onPostUpdated={fetchPosts} 
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </main>
+
+        {/* RIGHT SIDEBAR (Active Contacts & Messenger Integration) */}
+        <aside className="hidden lg:block w-72 shrink-0 sticky top-18 h-[calc(100vh-80px)] overflow-y-auto space-y-3">
+          <div className="border-b border-[#e4e6eb] pb-3">
+            <h4 className="text-xs font-semibold text-[#65676b] mb-2">Campus Announcements</h4>
+            <div className="rounded-xl border border-[#e4e6eb] bg-white p-3 text-xs space-y-1">
+              <span className="font-bold text-[#050505]">ADUSTECH Portal Update</span>
+              <p className="text-[#65676b] text-[11px]">Course registration for the current session remains open. Check academic hub for guidelines.</p>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between text-xs font-semibold text-[#65676b] mb-2">
+              <span>Direct Messages & AI</span>
+            </div>
+            <button
+              onClick={() => setActiveTab('messenger')}
+              className="flex w-full items-center gap-3 rounded-lg p-2 text-xs font-semibold hover:bg-[#e4e6eb] transition-colors"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-purple-500 to-[#1877f2] text-white">
+                <Bot className="h-4 w-4" />
+              </div>
+              <div className="text-left">
+                <p className="font-bold text-[#050505]">ADUSTECH AI</p>
+                <p className="text-[10px] text-[#65676b]">Available in Messenger</p>
+              </div>
             </button>
           </div>
+        </aside>
 
-          {/* Stories Tray */}
-          <div className="bg-white py-3 px-2 border-b border-gray-200 overflow-x-auto flex gap-2">
-            <div className="w-24 h-40 rounded-xl bg-gray-200 flex-shrink-0 relative overflow-hidden flex flex-col justify-end p-2 border border-gray-300">
-              <div className="absolute top-2 left-2 bg-[#1877f2] text-white p-1 rounded-full"><Plus className="w-4 h-4" /></div>
-              <span className="text-[10px] font-bold text-gray-800 leading-tight">Create story</span>
-            </div>
-            <div className="w-24 h-40 rounded-xl bg-slate-800 flex-shrink-0 relative overflow-hidden p-2 flex flex-col justify-between">
-              <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md w-max">5</span>
-              <span className="text-[10px] font-bold text-white leading-tight">Hajiya Mariam</span>
-            </div>
-            <div className="w-24 h-40 rounded-xl bg-slate-700 flex-shrink-0 relative overflow-hidden p-2 flex flex-col justify-between">
-              <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md w-max">3</span>
-              <span className="text-[10px] font-bold text-white leading-tight">Lawal Shaibu</span>
-            </div>
-          </div>
-
-          {/* Posts Feed */}
-          <div className="space-y-2 mt-2">
-            {/* Campus Header Demo Post */}
-            <div className="bg-white border-y border-gray-200">
-              <div className="p-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-full bg-emerald-700 text-white font-bold flex items-center justify-center text-xs">AD</div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-900 leading-tight">ADUSTECH WUDIL -ASPIRANTS 2022/2023 AND CAMPUS GIST</h4>
-                    <p className="text-[10px] text-gray-500">Sarki Fahad Ungogo • 2h • 🌐</p>
-                  </div>
-                </div>
-                <div className="flex gap-2 text-gray-500"><MoreHorizontal className="w-4 h-4" /><X className="w-4 h-4" /></div>
-              </div>
-              <p className="px-3 pb-2 text-xs text-gray-800">Duk wanda ya gane abinda ake nufi ya sakamin a kwament section 🤣🤣🤣🤣🤣🤣</p>
-            </div>
-
-            {/* Dynamic Supabase Posts */}
-            {posts.map((post) => (
-              <div key={post.id} className="bg-white border-y border-gray-200 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">U</div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-900">ADUSTECH Student</h4>
-                    <p className="text-[9px] text-gray-400">{new Date(post.created_at).toLocaleTimeString()}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-800">{post.content}</p>
-                <div className="flex justify-around border-t border-gray-100 pt-2 text-gray-500 text-xs">
-                  <button className="flex items-center gap-1"><ThumbsUp className="w-4 h-4" /> Like</button>
-                  <button className="flex items-center gap-1"><MessageSquare className="w-4 h-4" /> Comment</button>
-                  <button className="flex items-center gap-1"><Share2 className="w-4 h-4" /> Share</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </main>
-      )}
+      </div>
     </div>
   );
 }
