@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { 
   Home, Users, MessageSquare, Bell, BookOpen, FileText, 
-  Settings, User, Search, LogOut, Image, Send, ThumbsUp, 
-  Share2, AlertCircle, Loader2 
+  Settings, User, Search, LogOut, Image, Mic, Send, ThumbsUp, 
+  Share2, AlertCircle, Loader2, X 
 } from 'lucide-react';
 
 export default function App() {
@@ -14,10 +14,15 @@ export default function App() {
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState(null);
   const [postContent, setPostContent] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileType, setFileType] = useState(null); // 'image' | 'audio'
   const [isPosting, setIsPosting] = useState(false);
   const [activeCommentPost, setActiveCommentPost] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const imageInputRef = useRef(null);
+  const audioInputRef = useRef(null);
 
   // Auth Session Tracking
   useEffect(() => {
@@ -34,7 +39,7 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch Feed Posts from Supabase
+  // Fetch Feed Posts
   const fetchPosts = async () => {
     setFeedLoading(true);
     setFeedError(null);
@@ -42,7 +47,7 @@ export default function App() {
       const { data, error } = await supabase
         .from('posts')
         .select(`
-          id, content, created_at, user_id,
+          id, content, media_url, media_type, created_at, user_id,
           profiles ( full_name, avatar_url ),
           likes ( count ),
           comments ( id, content, created_at, profiles ( full_name ) )
@@ -62,17 +67,52 @@ export default function App() {
     if (session) fetchPosts();
   }, [session]);
 
-  // Create Text Post
+  // Handle Local File Selection
+  const handleFileChange = (e, type) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setFileType(type);
+    }
+  };
+
+  // Create Post with Optional Media Upload
   const handleCreatePost = async (e) => {
     e.preventDefault();
-    if (!postContent.trim()) return;
+    if (!postContent.trim() && !selectedFile) return;
 
     setIsPosting(true);
     try {
+      let publicMediaUrl = null;
+      let uploadedFileType = null;
+
+      if (selectedFile) {
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('post-media')
+          .upload(fileName, selectedFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('post-media')
+          .getPublicUrl(fileName);
+
+        publicMediaUrl = urlData.publicUrl;
+        uploadedFileType = fileType;
+      }
+
       const { data, error } = await supabase.from('posts').insert([
-        { user_id: session.user.id, content: postContent }
+        { 
+          user_id: session.user.id, 
+          content: postContent,
+          media_url: publicMediaUrl,
+          media_type: uploadedFileType
+        }
       ]).select(`
-        id, content, created_at, user_id,
+        id, content, media_url, media_type, created_at, user_id,
         profiles ( full_name, avatar_url ),
         likes ( count ),
         comments ( id, content, created_at, profiles ( full_name ) )
@@ -80,7 +120,10 @@ export default function App() {
 
       if (error) throw error;
       if (data) setPosts([data[0], ...posts]);
+      
       setPostContent('');
+      setSelectedFile(null);
+      setFileType(null);
     } catch (err) {
       alert(err.message || 'Error posting to feed.');
     } finally {
@@ -160,7 +203,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-[#050505]">
-      {/* Sticky Top Navigation */}
+      {/* Sticky Top Header */}
       <header className="sticky top-0 z-50 flex h-14 w-full items-center justify-between border-b border-[#e4e6eb] bg-white px-4 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 font-bold text-[#006837]">
@@ -181,7 +224,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Center Navigation Icons (Desktop) */}
+        {/* Center Nav */}
         <nav className="hidden md:flex items-center gap-1">
           {navItems.slice(0, 4).map((item) => {
             const Icon = item.icon;
@@ -235,10 +278,10 @@ export default function App() {
           </div>
         </aside>
 
-        {/* Center Content Feed */}
+        {/* Center Feed */}
         <main className="min-w-0 flex-1 px-2 sm:px-0 mb-20 md:mb-6">
           <div className="mx-auto max-w-xl space-y-4">
-            {/* Create Post Box */}
+            {/* Create Post Card */}
             <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
               <form onSubmit={handleCreatePost}>
                 <div className="flex gap-3">
@@ -253,16 +296,60 @@ export default function App() {
                     rows={2}
                   />
                 </div>
+
+                {/* Selected File Badge */}
+                {selectedFile && (
+                  <div className="mt-2 flex items-center justify-between rounded-lg bg-[#f0f2f5] px-3 py-2 text-xs">
+                    <span className="truncate font-medium text-gray-700">
+                      [{fileType?.toUpperCase()}] {selectedFile.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedFile(null); setFileType(null); }}
+                      className="text-gray-500 hover:text-red-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Hidden File Inputs */}
+                <input
+                  type="file"
+                  ref={imageInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(e, 'image')}
+                />
+                <input
+                  type="file"
+                  ref={audioInputRef}
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(e, 'audio')}
+                />
+
                 <div className="mt-3 flex items-center justify-between border-t border-[#e4e6eb] pt-3">
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 text-xs font-medium text-[#65676b] hover:bg-[#f0f2f5] px-3 py-1.5 rounded-md"
-                  >
-                    <Image className="h-4 w-4 text-green-600" /> Photo/Media
-                  </button>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      className="flex items-center gap-1 text-xs font-medium text-[#65676b] hover:bg-[#f0f2f5] px-3 py-1.5 rounded-md"
+                    >
+                      <Image className="h-4 w-4 text-green-600" /> Photo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => audioInputRef.current?.click()}
+                      className="flex items-center gap-1 text-xs font-medium text-[#65676b] hover:bg-[#f0f2f5] px-3 py-1.5 rounded-md"
+                    >
+                      <Mic className="h-4 w-4 text-blue-600" /> Audio
+                    </button>
+                  </div>
+
                   <button
                     type="submit"
-                    disabled={isPosting || !postContent.trim()}
+                    disabled={isPosting || (!postContent.trim() && !selectedFile)}
                     className="rounded-lg bg-[#006837] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#004d28] disabled:opacity-50 flex items-center gap-2"
                   >
                     {isPosting && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -272,7 +359,7 @@ export default function App() {
               </form>
             </div>
 
-            {/* Loading & Error States */}
+            {/* Feed States */}
             {feedLoading && (
               <div className="flex justify-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-[#006837]" />
@@ -297,9 +384,9 @@ export default function App() {
               </div>
             )}
 
-            {/* Posts Feed */}
+            {/* Feed Posts */}
             {posts.map((post) => (
-              <article key={post.id} className="rounded-xl border border-[#e4e6eb] bg-white shadow-xs">
+              <article key={post.id} className="rounded-xl border border-[#e4e6eb] bg-white shadow-xs overflow-hidden">
                 <div className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#006837] text-white font-bold">
@@ -310,7 +397,25 @@ export default function App() {
                       <p className="text-xs text-[#65676b]">{new Date(post.created_at).toLocaleString()}</p>
                     </div>
                   </div>
-                  <p className="mt-3 text-sm text-[#050505] whitespace-pre-line">{post.content}</p>
+
+                  {post.content && <p className="mt-3 text-sm text-[#050505] whitespace-pre-line">{post.content}</p>}
+
+                  {/* Render Photo */}
+                  {post.media_url && post.media_type === 'image' && (
+                    <div className="mt-3 overflow-hidden rounded-lg border border-[#e4e6eb]">
+                      <img src={post.media_url} alt="Post Attachment" className="max-h-96 w-full object-cover" />
+                    </div>
+                  )}
+
+                  {/* Render Audio Player */}
+                  {post.media_url && post.media_type === 'audio' && (
+                    <div className="mt-3 rounded-lg border border-[#e4e6eb] bg-[#f8f9fa] p-3">
+                      <audio controls className="w-full">
+                        <source src={post.media_url} />
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t border-[#e4e6eb] px-4 py-1 flex items-center justify-between text-xs text-[#65676b]">
@@ -340,7 +445,7 @@ export default function App() {
                 </div>
 
                 {activeCommentPost === post.id && (
-                  <div className="border-t border-[#e4e6eb] bg-[#f8f9fa] p-4 rounded-b-xl space-y-3">
+                  <div className="border-t border-[#e4e6eb] bg-[#f8f9fa] p-4 space-y-3">
                     <div className="flex gap-2">
                       <input
                         type="text"
