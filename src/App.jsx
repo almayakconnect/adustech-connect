@@ -1,7 +1,7 @@
-import Messenger from './components/Messenger';
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import Messenger from './components/Messenger';
+import StatusStories from './components/StatusStories';
 import { 
   Home, Users, MessageSquare, Bell, BookOpen, FileText, 
   Settings, User, Search, LogOut, Image, Mic, Send, ThumbsUp, 
@@ -26,7 +26,6 @@ export default function App() {
   const imageInputRef = useRef(null);
   const audioInputRef = useRef(null);
 
-  // Auth Session Tracking
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -41,7 +40,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch Feed Posts
   const fetchPosts = async () => {
     setFeedLoading(true);
     setFeedError(null);
@@ -69,7 +67,6 @@ export default function App() {
     if (session) fetchPosts();
   }, [session]);
 
-  // Handle Local File Selection
   const handleFileChange = (e, type) => {
     const file = e.target.files[0];
     if (file) {
@@ -78,7 +75,6 @@ export default function App() {
     }
   };
 
-  // Create Post with Optional Media Upload
   const handleCreatePost = async (e) => {
     e.preventDefault();
     if (!postContent.trim() && !selectedFile) return;
@@ -133,7 +129,6 @@ export default function App() {
     }
   };
 
-  // Toggle Like
   const handleToggleLike = async (postId) => {
     try {
       const { data: existingLike } = await supabase
@@ -154,7 +149,6 @@ export default function App() {
     }
   };
 
-  // Add Comment
   const handleAddComment = async (postId) => {
     if (!commentText.trim()) return;
     try {
@@ -168,7 +162,6 @@ export default function App() {
     }
   };
 
-  // Native Share
   const handleShare = async (postId) => {
     const shareUrl = `${window.location.origin}/#post-${postId}`;
     if (navigator.share) {
@@ -205,7 +198,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-[#050505]">
-      {/* Sticky Top Header */}
       <header className="sticky top-0 z-50 flex h-14 w-full items-center justify-between border-b border-[#e4e6eb] bg-white px-4 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 font-bold text-[#006837]">
@@ -226,7 +218,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Center Nav */}
         <nav className="hidden md:flex items-center gap-1">
           {navItems.slice(0, 4).map((item) => {
             const Icon = item.icon;
@@ -255,9 +246,7 @@ export default function App() {
         </button>
       </header>
 
-      {/* Main Grid Layout */}
       <div className="mx-auto flex max-w-[1280px] justify-between gap-6 px-0 sm:px-4 pt-4">
-        {/* Left Sidebar */}
         <aside className="sticky top-18 hidden h-[calc(100vh-5rem)] w-64 shrink-0 overflow-y-auto lg:block">
           <div className="flex flex-col gap-1">
             {navItems.map((item) => {
@@ -280,12 +269,14 @@ export default function App() {
           </div>
         </aside>
 
-        {/* Center Content / Messenger Switcher */}
         <main className="min-w-0 flex-1 px-2 sm:px-0 mb-20 md:mb-6">
           {activeTab === 'messenger' ? (
             <Messenger session={session} />
           ) : (
             <div className="mx-auto max-w-xl space-y-4">
+              {/* Stories Bar */}
+              <StatusStories session={session} />
+
               {/* Create Post Card */}
               <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
                 <form onSubmit={handleCreatePost}>
@@ -302,7 +293,6 @@ export default function App() {
                     />
                   </div>
 
-                  {/* Selected File Badge */}
                   {selectedFile && (
                     <div className="mt-2 flex items-center justify-between rounded-lg bg-[#f0f2f5] px-3 py-2 text-xs">
                       <span className="truncate font-medium text-gray-700">
@@ -318,7 +308,6 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Hidden File Inputs */}
                   <input
                     type="file"
                     ref={imageInputRef}
@@ -405,19 +394,16 @@ export default function App() {
 
                     {post.content && <p className="mt-3 text-sm text-[#050505] whitespace-pre-line">{post.content}</p>}
 
-                    {/* Render Photo */}
                     {post.media_url && post.media_type === 'image' && (
                       <div className="mt-3 overflow-hidden rounded-lg border border-[#e4e6eb]">
                         <img src={post.media_url} alt="Post Attachment" className="max-h-96 w-full object-cover" />
                       </div>
                     )}
 
-                    {/* Render Audio Player */}
                     {post.media_url && post.media_type === 'audio' && (
                       <div className="mt-3 rounded-lg border border-[#e4e6eb] bg-[#f8f9fa] p-3">
                         <audio controls className="w-full">
                           <source src={post.media_url} />
-                          Your browser does not support the audio element.
                         </audio>
                       </div>
                     )}
@@ -483,7 +469,6 @@ export default function App() {
           )}
         </main>
 
-        {/* Right Information Panel */}
         {activeTab !== 'messenger' && (
           <aside className="sticky top-18 hidden h-[calc(100vh-5rem)] w-80 shrink-0 overflow-y-auto xl:block">
             <div className="flex flex-col gap-4">
@@ -505,7 +490,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-14 border-t border-[#e4e6eb] bg-white md:hidden">
         {navItems.slice(0, 5).map((item) => {
           const Icon = item.icon;
