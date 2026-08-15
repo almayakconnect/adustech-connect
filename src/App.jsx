@@ -1,5 +1,7 @@
+import Messenger from './components/Messenger';
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
+import Messenger from './components/Messenger';
 import { 
   Home, Users, MessageSquare, Bell, BookOpen, FileText, 
   Settings, User, Search, LogOut, Image, Mic, Send, ThumbsUp, 
@@ -15,7 +17,7 @@ export default function App() {
   const [feedError, setFeedError] = useState(null);
   const [postContent, setPostContent] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
-  const [fileType, setFileType] = useState(null); // 'image' | 'audio'
+  const [fileType, setFileType] = useState(null);
   const [isPosting, setIsPosting] = useState(false);
   const [activeCommentPost, setActiveCommentPost] = useState(null);
   const [commentText, setCommentText] = useState('');
@@ -278,223 +280,229 @@ export default function App() {
           </div>
         </aside>
 
-        {/* Center Feed */}
+        {/* Center Content / Messenger Switcher */}
         <main className="min-w-0 flex-1 px-2 sm:px-0 mb-20 md:mb-6">
-          <div className="mx-auto max-w-xl space-y-4">
-            {/* Create Post Card */}
-            <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
-              <form onSubmit={handleCreatePost}>
-                <div className="flex gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#006837] text-white font-bold">
-                    {session?.user?.email?.[0].toUpperCase() || 'U'}
-                  </div>
-                  <textarea
-                    value={postContent}
-                    onChange={(e) => setPostContent(e.target.value)}
-                    placeholder="What's on your mind, ADUSTECH student?"
-                    className="w-full resize-none bg-transparent pt-2 text-sm focus:outline-none"
-                    rows={2}
-                  />
-                </div>
-
-                {/* Selected File Badge */}
-                {selectedFile && (
-                  <div className="mt-2 flex items-center justify-between rounded-lg bg-[#f0f2f5] px-3 py-2 text-xs">
-                    <span className="truncate font-medium text-gray-700">
-                      [{fileType?.toUpperCase()}] {selectedFile.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => { setSelectedFile(null); setFileType(null); }}
-                      className="text-gray-500 hover:text-red-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Hidden File Inputs */}
-                <input
-                  type="file"
-                  ref={imageInputRef}
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e, 'image')}
-                />
-                <input
-                  type="file"
-                  ref={audioInputRef}
-                  accept="audio/*"
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e, 'audio')}
-                />
-
-                <div className="mt-3 flex items-center justify-between border-t border-[#e4e6eb] pt-3">
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => imageInputRef.current?.click()}
-                      className="flex items-center gap-1 text-xs font-medium text-[#65676b] hover:bg-[#f0f2f5] px-3 py-1.5 rounded-md"
-                    >
-                      <Image className="h-4 w-4 text-green-600" /> Photo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => audioInputRef.current?.click()}
-                      className="flex items-center gap-1 text-xs font-medium text-[#65676b] hover:bg-[#f0f2f5] px-3 py-1.5 rounded-md"
-                    >
-                      <Mic className="h-4 w-4 text-blue-600" /> Audio
-                    </button>
+          {activeTab === 'messenger' ? (
+            <Messenger session={session} />
+          ) : (
+            <div className="mx-auto max-w-xl space-y-4">
+              {/* Create Post Card */}
+              <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
+                <form onSubmit={handleCreatePost}>
+                  <div className="flex gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#006837] text-white font-bold">
+                      {session?.user?.email?.[0].toUpperCase() || 'U'}
+                    </div>
+                    <textarea
+                      value={postContent}
+                      onChange={(e) => setPostContent(e.target.value)}
+                      placeholder="What's on your mind, ADUSTECH student?"
+                      className="w-full resize-none bg-transparent pt-2 text-sm focus:outline-none"
+                      rows={2}
+                    />
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isPosting || (!postContent.trim() && !selectedFile)}
-                    className="rounded-lg bg-[#006837] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#004d28] disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {isPosting && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Post
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Feed States */}
-            {feedLoading && (
-              <div className="flex justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-[#006837]" />
-              </div>
-            )}
-
-            {feedError && (
-              <div className="flex items-center justify-between rounded-xl bg-red-50 p-4 text-sm text-red-700">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5" />
-                  <span>{feedError}</span>
-                </div>
-                <button onClick={fetchPosts} className="font-semibold underline">
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {!feedLoading && !feedError && posts.length === 0 && (
-              <div className="rounded-xl border border-[#e4e6eb] bg-white p-8 text-center text-[#65676b]">
-                No posts yet. Be the first to share something with your campus!
-              </div>
-            )}
-
-            {/* Feed Posts */}
-            {posts.map((post) => (
-              <article key={post.id} className="rounded-xl border border-[#e4e6eb] bg-white shadow-xs overflow-hidden">
-                <div className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#006837] text-white font-bold">
-                      {post.profiles?.full_name?.[0] || 'A'}
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-sm">{post.profiles?.full_name || 'Anonymous Student'}</h4>
-                      <p className="text-xs text-[#65676b]">{new Date(post.created_at).toLocaleString()}</p>
-                    </div>
-                  </div>
-
-                  {post.content && <p className="mt-3 text-sm text-[#050505] whitespace-pre-line">{post.content}</p>}
-
-                  {/* Render Photo */}
-                  {post.media_url && post.media_type === 'image' && (
-                    <div className="mt-3 overflow-hidden rounded-lg border border-[#e4e6eb]">
-                      <img src={post.media_url} alt="Post Attachment" className="max-h-96 w-full object-cover" />
-                    </div>
-                  )}
-
-                  {/* Render Audio Player */}
-                  {post.media_url && post.media_type === 'audio' && (
-                    <div className="mt-3 rounded-lg border border-[#e4e6eb] bg-[#f8f9fa] p-3">
-                      <audio controls className="w-full">
-                        <source src={post.media_url} />
-                        Your browser does not support the audio element.
-                      </audio>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-[#e4e6eb] px-4 py-1 flex items-center justify-between text-xs text-[#65676b]">
-                  <span>{post.likes?.[0]?.count || 0} Likes</span>
-                  <span>{post.comments?.length || 0} Comments</span>
-                </div>
-
-                <div className="flex border-t border-[#e4e6eb] px-2 py-1">
-                  <button
-                    onClick={() => handleToggleLike(post.id)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-[#65676b] hover:bg-[#f0f2f5]"
-                  >
-                    <ThumbsUp className="h-4 w-4" /> Like
-                  </button>
-                  <button
-                    onClick={() => setActiveCommentPost(activeCommentPost === post.id ? null : post.id)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-[#65676b] hover:bg-[#f0f2f5]"
-                  >
-                    <MessageSquare className="h-4 w-4" /> Comment
-                  </button>
-                  <button
-                    onClick={() => handleShare(post.id)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-[#65676b] hover:bg-[#f0f2f5]"
-                  >
-                    <Share2 className="h-4 w-4" /> Share
-                  </button>
-                </div>
-
-                {activeCommentPost === post.id && (
-                  <div className="border-t border-[#e4e6eb] bg-[#f8f9fa] p-4 space-y-3">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="Write a comment..."
-                        className="flex-1 rounded-full border border-[#e4e6eb] bg-white px-4 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#006837]"
-                      />
+                  {/* Selected File Badge */}
+                  {selectedFile && (
+                    <div className="mt-2 flex items-center justify-between rounded-lg bg-[#f0f2f5] px-3 py-2 text-xs">
+                      <span className="truncate font-medium text-gray-700">
+                        [{fileType?.toUpperCase()}] {selectedFile.name}
+                      </span>
                       <button
-                        onClick={() => handleAddComment(post.id)}
-                        className="rounded-full bg-[#006837] p-2 text-white hover:bg-[#004d28]"
+                        type="button"
+                        onClick={() => { setSelectedFile(null); setFileType(null); }}
+                        className="text-gray-500 hover:text-red-600"
                       >
-                        <Send className="h-4 w-4" />
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Hidden File Inputs */}
+                  <input
+                    type="file"
+                    ref={imageInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileChange(e, 'image')}
+                  />
+                  <input
+                    type="file"
+                    ref={audioInputRef}
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(e) => handleFileChange(e, 'audio')}
+                  />
+
+                  <div className="mt-3 flex items-center justify-between border-t border-[#e4e6eb] pt-3">
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => imageInputRef.current?.click()}
+                        className="flex items-center gap-1 text-xs font-medium text-[#65676b] hover:bg-[#f0f2f5] px-3 py-1.5 rounded-md"
+                      >
+                        <Image className="h-4 w-4 text-green-600" /> Photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => audioInputRef.current?.click()}
+                        className="flex items-center gap-1 text-xs font-medium text-[#65676b] hover:bg-[#f0f2f5] px-3 py-1.5 rounded-md"
+                      >
+                        <Mic className="h-4 w-4 text-blue-600" /> Audio
                       </button>
                     </div>
 
-                    <div className="space-y-2 mt-2">
-                      {post.comments?.map((comment) => (
-                        <div key={comment.id} className="rounded-lg bg-white p-2.5 text-xs border border-[#e4e6eb]">
-                          <span className="font-semibold text-gray-900">{comment.profiles?.full_name || 'Student'}: </span>
-                          <span className="text-gray-700">{comment.content}</span>
-                        </div>
-                      ))}
-                    </div>
+                    <button
+                      type="submit"
+                      disabled={isPosting || (!postContent.trim() && !selectedFile)}
+                      className="rounded-lg bg-[#006837] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#004d28] disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isPosting && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Post
+                    </button>
                   </div>
-                )}
-              </article>
-            ))}
-          </div>
+                </form>
+              </div>
+
+              {/* Feed States */}
+              {feedLoading && (
+                <div className="flex justify-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#006837]" />
+                </div>
+              )}
+
+              {feedError && (
+                <div className="flex items-center justify-between rounded-xl bg-red-50 p-4 text-sm text-red-700">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5" />
+                    <span>{feedError}</span>
+                  </div>
+                  <button onClick={fetchPosts} className="font-semibold underline">
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {!feedLoading && !feedError && posts.length === 0 && (
+                <div className="rounded-xl border border-[#e4e6eb] bg-white p-8 text-center text-[#65676b]">
+                  No posts yet. Be the first to share something with your campus!
+                </div>
+              )}
+
+              {/* Feed Posts */}
+              {posts.map((post) => (
+                <article key={post.id} className="rounded-xl border border-[#e4e6eb] bg-white shadow-xs overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#006837] text-white font-bold">
+                        {post.profiles?.full_name?.[0] || 'A'}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">{post.profiles?.full_name || 'Anonymous Student'}</h4>
+                        <p className="text-xs text-[#65676b]">{new Date(post.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    {post.content && <p className="mt-3 text-sm text-[#050505] whitespace-pre-line">{post.content}</p>}
+
+                    {/* Render Photo */}
+                    {post.media_url && post.media_type === 'image' && (
+                      <div className="mt-3 overflow-hidden rounded-lg border border-[#e4e6eb]">
+                        <img src={post.media_url} alt="Post Attachment" className="max-h-96 w-full object-cover" />
+                      </div>
+                    )}
+
+                    {/* Render Audio Player */}
+                    {post.media_url && post.media_type === 'audio' && (
+                      <div className="mt-3 rounded-lg border border-[#e4e6eb] bg-[#f8f9fa] p-3">
+                        <audio controls className="w-full">
+                          <source src={post.media_url} />
+                          Your browser does not support the audio element.
+                        </audio>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-[#e4e6eb] px-4 py-1 flex items-center justify-between text-xs text-[#65676b]">
+                    <span>{post.likes?.[0]?.count || 0} Likes</span>
+                    <span>{post.comments?.length || 0} Comments</span>
+                  </div>
+
+                  <div className="flex border-t border-[#e4e6eb] px-2 py-1">
+                    <button
+                      onClick={() => handleToggleLike(post.id)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-[#65676b] hover:bg-[#f0f2f5]"
+                    >
+                      <ThumbsUp className="h-4 w-4" /> Like
+                    </button>
+                    <button
+                      onClick={() => setActiveCommentPost(activeCommentPost === post.id ? null : post.id)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-[#65676b] hover:bg-[#f0f2f5]"
+                    >
+                      <MessageSquare className="h-4 w-4" /> Comment
+                    </button>
+                    <button
+                      onClick={() => handleShare(post.id)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-[#65676b] hover:bg-[#f0f2f5]"
+                    >
+                      <Share2 className="h-4 w-4" /> Share
+                    </button>
+                  </div>
+
+                  {activeCommentPost === post.id && (
+                    <div className="border-t border-[#e4e6eb] bg-[#f8f9fa] p-4 space-y-3">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          placeholder="Write a comment..."
+                          className="flex-1 rounded-full border border-[#e4e6eb] bg-white px-4 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#006837]"
+                        />
+                        <button
+                          onClick={() => handleAddComment(post.id)}
+                          className="rounded-full bg-[#006837] p-2 text-white hover:bg-[#004d28]"
+                        >
+                          <Send className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2 mt-2">
+                        {post.comments?.map((comment) => (
+                          <div key={comment.id} className="rounded-lg bg-white p-2.5 text-xs border border-[#e4e6eb]">
+                            <span className="font-semibold text-gray-900">{comment.profiles?.full_name || 'Student'}: </span>
+                            <span className="text-gray-700">{comment.content}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
         </main>
 
         {/* Right Information Panel */}
-        <aside className="sticky top-18 hidden h-[calc(100vh-5rem)] w-80 shrink-0 overflow-y-auto xl:block">
-          <div className="flex flex-col gap-4">
-            <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
-              <h3 className="font-semibold text-gray-800">University Announcements</h3>
-              <p className="mt-2 text-xs text-[#65676b]">
-                Semester examinations commence shortly. Verify your registered courses on the portal.
-              </p>
-            </div>
-            <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
-              <h3 className="font-semibold text-gray-800">Upcoming Events</h3>
-              <div className="mt-2 text-sm">
-                <p className="font-medium">ADUSTECH Tech Innovation Fair</p>
-                <p className="text-xs text-[#65676b]">Main Auditorium • 10:00 AM</p>
+        {activeTab !== 'messenger' && (
+          <aside className="sticky top-18 hidden h-[calc(100vh-5rem)] w-80 shrink-0 overflow-y-auto xl:block">
+            <div className="flex flex-col gap-4">
+              <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
+                <h3 className="font-semibold text-gray-800">University Announcements</h3>
+                <p className="mt-2 text-xs text-[#65676b]">
+                  Semester examinations commence shortly. Verify your registered courses on the portal.
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
+                <h3 className="font-semibold text-gray-800">Upcoming Events</h3>
+                <div className="mt-2 text-sm">
+                  <p className="font-medium">ADUSTECH Tech Innovation Fair</p>
+                  <p className="text-xs text-[#65676b]">Main Auditorium • 10:00 AM</p>
+                </div>
               </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
 
       {/* Mobile Bottom Navigation */}
