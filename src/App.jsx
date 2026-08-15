@@ -9,7 +9,9 @@ import NotificationsPopover from './components/NotificationsPopover';
 import { 
   Home, MessageSquare, BookOpen, User, Search, Bell, 
   Image, Mic, Video, Heart, MessageCircle, Share2, 
-  Trash2, Send, Menu, X, Bot, LogOut 
+  Trash2, Send, Menu, X, LogOut, Users, Bookmark, 
+  ThumbsUp, MoreHorizontal, Smile, Film, Sparkles,
+  GraduationCap, Building2, CheckCircle2
 } from 'lucide-react';
 
 export default function App() {
@@ -20,16 +22,11 @@ export default function App() {
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
-  // New post form state
+  // Post creation state
   const [postText, setPostText] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
-  const [mediaType, setMediaType] = useState(null); // 'image', 'audio', 'video'
+  const [mediaType, setMediaType] = useState(null); 
   const [uploading, setUploading] = useState(false);
-
-  // Comment state per post
-  const [comments, setComments] = useState({});
-  const [commentInput, setCommentInput] = useState({});
-  const [activeCommentPostId, setActiveCommentPostId] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -146,211 +143,318 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans">
-      {/* Top Header */}
-      <header className="sticky top-0 z-50 bg-emerald-800 text-white shadow-md">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-[#f0f2f5] text-slate-900 font-sans">
+      
+      {/* Top Header - Facebook/University Clean Hybrid */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/80">
+        <div className="max-w-[1440px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
+          
+          {/* Logo & Search */}
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold tracking-wide">ADUSTECH Connect</h1>
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('feed')}>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-800 to-emerald-600 flex items-center justify-center font-black text-white text-xl shadow-md shadow-emerald-900/10 tracking-tight">
+                A
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-base font-extrabold text-slate-900 tracking-tight leading-none">ADUSTECH</h1>
+                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Connect</span>
+              </div>
+            </div>
+
+            <div className="relative flex items-center bg-slate-100/80 hover:bg-slate-100 transition rounded-full px-3.5 py-1.5 w-48 sm:w-64 border border-slate-200/60 focus-within:border-emerald-500 focus-within:bg-white">
+              <Search className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
+              <input 
+                type="text" 
+                placeholder="Search ADUSTECH..." 
+                className="bg-transparent border-none outline-none text-xs w-full placeholder-slate-400 font-medium"
+              />
+            </div>
           </div>
 
-          {/* Search bar */}
-          <div className="hidden md:flex items-center bg-emerald-900/60 text-white rounded-full px-3 py-1.5 w-64 border border-emerald-700">
-            <Search className="w-4 h-4 text-emerald-200 mr-2" />
-            <input 
-              type="text" 
-              placeholder="Search ADUSTECH Connect..." 
-              className="bg-transparent border-none outline-none text-sm w-full placeholder-emerald-300"
-            />
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6">
-            <button onClick={() => setActiveTab('feed')} className={`flex items-center gap-1 font-medium hover:text-emerald-200 ${activeTab === 'feed' ? 'border-b-2 border-white pb-1' : ''}`}>
-              <Home className="w-5 h-5" /> Feed
+          {/* Central Navigation Tabs */}
+          <nav className="hidden md:flex items-center justify-center h-full max-w-md w-full">
+            <button 
+              onClick={() => setActiveTab('feed')} 
+              className={`flex items-center justify-center h-full px-6 border-b-[3px] transition-all ${activeTab === 'feed' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+              title="Feed"
+            >
+              <Home className="w-5 h-5" />
             </button>
-            <button onClick={() => setActiveTab('messenger')} className={`flex items-center gap-1 font-medium hover:text-emerald-200 ${activeTab === 'messenger' ? 'border-b-2 border-white pb-1' : ''}`}>
-              <MessageSquare className="w-5 h-5" /> Messenger
+            <button 
+              onClick={() => setActiveTab('messenger')} 
+              className={`flex items-center justify-center h-full px-6 border-b-[3px] transition-all ${activeTab === 'messenger' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+              title="Messenger"
+            >
+              <MessageSquare className="w-5 h-5" />
             </button>
-            <button onClick={() => setActiveTab('academics')} className={`flex items-center gap-1 font-medium hover:text-emerald-200 ${activeTab === 'academics' ? 'border-b-2 border-white pb-1' : ''}`}>
-              <BookOpen className="w-5 h-5" /> Academics
+            <button 
+              onClick={() => setActiveTab('academics')} 
+              className={`flex items-center justify-center h-full px-6 border-b-[3px] transition-all ${activeTab === 'academics' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+              title="Academic Hub"
+            >
+              <BookOpen className="w-5 h-5" />
             </button>
-            <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-1 font-medium hover:text-emerald-200 ${activeTab === 'profile' ? 'border-b-2 border-white pb-1' : ''}`}>
-              <User className="w-5 h-5" /> Profile
+            <button 
+              onClick={() => setActiveTab('profile')} 
+              className={`flex items-center justify-center h-full px-6 border-b-[3px] transition-all ${activeTab === 'profile' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+              title="Profile"
+            >
+              <User className="w-5 h-5" />
             </button>
           </nav>
 
-          {/* User Controls */}
-          <div className="flex items-center gap-3">
+          {/* User & Controls */}
+          <div className="flex items-center gap-2">
             <NotificationsPopover />
-            <button onClick={() => supabase.auth.signOut()} className="p-2 rounded-full hover:bg-emerald-700 text-emerald-100" title="Sign Out">
-              <LogOut className="w-5 h-5" />
+            <button 
+              onClick={() => supabase.auth.signOut()} 
+              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-red-50 hover:text-red-600 flex items-center justify-center text-slate-600 transition" 
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
-            <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              {mobileMenuOpen ? <X /> : <Menu />}
+            <button className="md:hidden p-2 text-slate-600" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
 
         {/* Mobile Navigation Dropdown */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-emerald-900 border-t border-emerald-700 px-4 py-3 space-y-2">
-            <button onClick={() => { setActiveTab('feed'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-medium">Feed</button>
-            <button onClick={() => { setActiveTab('messenger'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-medium">Messenger</button>
-            <button onClick={() => { setActiveTab('academics'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-medium">Academics</button>
-            <button onClick={() => { setActiveTab('profile'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-medium">Profile</button>
+          <div className="md:hidden bg-white border-b px-4 py-3 space-y-1 shadow-lg">
+            <button onClick={() => { setActiveTab('feed'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-semibold ${activeTab === 'feed' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700'}`}>
+              <Home className="w-5 h-5" /> Feed
+            </button>
+            <button onClick={() => { setActiveTab('messenger'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-semibold ${activeTab === 'messenger' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700'}`}>
+              <MessageSquare className="w-5 h-5" /> Messenger
+            </button>
+            <button onClick={() => { setActiveTab('academics'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-semibold ${activeTab === 'academics' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700'}`}>
+              <BookOpen className="w-5 h-5" /> Academics & Resources
+            </button>
+            <button onClick={() => { setActiveTab('profile'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-semibold ${activeTab === 'profile' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700'}`}>
+              <User className="w-5 h-5" /> My Profile
+            </button>
           </div>
         )}
       </header>
 
-      {/* Main Container */}
-      <main className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Main Layout Grid */}
+      <div className="max-w-[1280px] mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-12 gap-6">
         
         {/* Left Sidebar */}
-        <aside className="hidden md:block md:col-span-1 space-y-4">
-          <div className="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg">
-                {profile?.full_name ? profile.full_name[0] : 'S'}
+        <aside className="hidden lg:block lg:col-span-3 space-y-4 sticky top-20 h-fit">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 space-y-3">
+            <div 
+              onClick={() => setActiveTab('profile')}
+              className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition cursor-pointer"
+            >
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                {profile?.full_name ? profile.full_name[0] : 'U'}
               </div>
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm">{profile?.full_name || 'Student'}</h3>
-                <p className="text-xs text-slate-500">{profile?.matric_number || 'ADUSTECH Student'}</p>
+              <div className="overflow-hidden">
+                <h3 className="font-bold text-slate-800 text-sm truncate">{profile?.full_name || 'Student'}</h3>
+                <p className="text-[11px] text-slate-500 truncate">{profile?.matric_number || 'ADUSTECH'}</p>
               </div>
             </div>
-            <div className="text-xs text-slate-600 border-t pt-2 space-y-1">
-              <p><span className="font-semibold">Dept:</span> {profile?.department || 'N/A'}</p>
-              <p><span className="font-semibold">Level:</span> {profile?.level || 'N/A'}</p>
+
+            <div className="border-t border-slate-100 pt-3 space-y-1 text-xs text-slate-600">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50">
+                <Building2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span className="truncate">{profile?.department || 'Department'}</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50">
+                <GraduationCap className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                <span>Level: {profile?.level || 'N/A'}</span>
+              </div>
             </div>
           </div>
         </aside>
 
-        {/* Main Content Area */}
-        <section className="col-span-1 md:col-span-3 space-y-6">
+        {/* Center Main Feed */}
+        <main className="col-span-1 md:col-span-8 lg:col-span-6 space-y-5">
           {activeTab === 'messenger' && <Messenger session={session} />}
           {activeTab === 'academics' && <AcademicHub session={session} />}
           {activeTab === 'profile' && <UserProfile session={session} profile={profile} onUpdate={() => fetchProfile(session.user.id)} />}
 
           {activeTab === 'feed' && (
-            <div className="space-y-6">
-              {/* Stories Bar */}
+            <div className="space-y-5">
+              
+              {/* Stories Component */}
               <StatusStories session={session} />
 
-              {/* Post Composer */}
-              <div className="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
-                <form onSubmit={handleCreatePost} className="space-y-3">
-                  <div className="flex gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                      {profile?.full_name ? profile.full_name[0] : 'S'}
+              {/* Enhanced Facebook-style Composer */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4">
+                <form onSubmit={handleCreatePost}>
+                  <div className="flex gap-3 items-center pb-3 border-b border-slate-100">
+                    <div className="w-10 h-10 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
+                      {profile?.full_name ? profile.full_name[0] : 'U'}
                     </div>
-                    <textarea
+                    <input
+                      type="text"
                       value={postText}
                       onChange={(e) => setPostText(e.target.value)}
-                      placeholder="What's on your mind?"
-                      className="w-full border-none focus:ring-0 resize-none text-slate-700 outline-none text-sm min-h-[60px]"
+                      placeholder={`What's on your mind, ${profile?.full_name?.split(' ')[0] || 'student'}?`}
+                      className="bg-slate-100/80 hover:bg-slate-100 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition w-full rounded-full py-2.5 px-4 outline-none text-xs text-slate-800 placeholder-slate-400 font-medium"
                     />
                   </div>
 
                   {mediaFile && (
-                    <div className="text-xs bg-slate-100 p-2 rounded flex justify-between items-center text-slate-600">
-                      <span>Attached: {mediaFile.name} ({mediaType})</span>
-                      <button type="button" onClick={() => { setMediaFile(null); setMediaType(null); }} className="text-red-500 font-bold">Remove</button>
+                    <div className="mt-3 text-xs bg-emerald-50/80 border border-emerald-200 p-2.5 rounded-xl flex justify-between items-center text-emerald-800">
+                      <span className="font-medium truncate max-w-[250px]">Attached: {mediaFile.name}</span>
+                      <button type="button" onClick={() => { setMediaFile(null); setMediaType(null); }} className="text-red-500 hover:text-red-700 font-bold ml-2">Remove</button>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between border-t pt-3">
-                    <div className="flex items-center gap-2">
-                      <label className="cursor-pointer text-slate-500 hover:text-emerald-700 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2.5 py-1.5 rounded-lg border">
-                        <Image className="w-4 h-4 text-emerald-600" /> Photo
-                        <input type="file" accept="image/*" onChange={(e) => handleMediaSelect(e, 'image')} className="hidden" />
-                      </label>
-                      <label className="cursor-pointer text-slate-500 hover:text-emerald-700 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2.5 py-1.5 rounded-lg border">
-                        <Mic className="w-4 h-4 text-blue-600" /> Audio
-                        <input type="file" accept="audio/*" onChange={(e) => handleMediaSelect(e, 'audio')} className="hidden" />
-                      </label>
-                      <label className="cursor-pointer text-slate-500 hover:text-emerald-700 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2.5 py-1.5 rounded-lg border">
-                        <Video className="w-4 h-4 text-purple-600" /> Video
-                        <input type="file" accept="video/*" onChange={(e) => handleMediaSelect(e, 'video')} className="hidden" />
-                      </label>
-                    </div>
+                  {/* Attachment Actions */}
+                  <div className="flex items-center justify-between pt-3">
+                    <label className="flex items-center justify-center gap-2 flex-1 hover:bg-slate-50 py-2 rounded-xl cursor-pointer transition text-slate-600">
+                      <Image className="w-5 h-5 text-emerald-500" />
+                      <span className="text-xs font-semibold">Photo</span>
+                      <input type="file" accept="image/*" onChange={(e) => handleMediaSelect(e, 'image')} className="hidden" />
+                    </label>
 
+                    <label className="flex items-center justify-center gap-2 flex-1 hover:bg-slate-50 py-2 rounded-xl cursor-pointer transition text-slate-600">
+                      <Mic className="w-5 h-5 text-blue-500" />
+                      <span className="text-xs font-semibold">Audio</span>
+                      <input type="file" accept="audio/*" onChange={(e) => handleMediaSelect(e, 'audio')} className="hidden" />
+                    </label>
+
+                    <label className="flex items-center justify-center gap-2 flex-1 hover:bg-slate-50 py-2 rounded-xl cursor-pointer transition text-slate-600">
+                      <Film className="w-5 h-5 text-purple-500" />
+                      <span className="text-xs font-semibold">Video</span>
+                      <input type="file" accept="video/*" onChange={(e) => handleMediaSelect(e, 'video')} className="hidden" />
+                    </label>
+                  </div>
+
+                  {(postText.trim() || mediaFile) && (
                     <button
                       type="submit"
-                      disabled={uploading || (!postText.trim() && !mediaFile)}
-                      className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg transition"
+                      disabled={uploading}
+                      className="w-full mt-3 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold py-2 rounded-xl text-xs shadow-md shadow-emerald-900/10 transition"
                     >
-                      {uploading ? 'Posting...' : 'Post'}
+                      {uploading ? 'Publishing...' : 'Post to Feed'}
                     </button>
-                  </div>
+                  )}
                 </form>
               </div>
 
-              {/* Posts Feed */}
+              {/* Posts Feed Cards */}
               {loadingPosts ? (
-                <div className="text-center py-8 text-slate-500 text-sm">Loading feed...</div>
+                <div className="bg-white rounded-2xl p-8 text-center text-slate-400 text-xs font-medium border border-slate-200/80 shadow-sm">Loading campus feed...</div>
               ) : posts.length === 0 ? (
-                <div className="bg-white rounded-xl p-8 text-center text-slate-500 border">No posts yet. Be the first to share something!</div>
+                <div className="bg-white rounded-2xl p-10 text-center text-slate-500 border border-slate-200/80 shadow-sm space-y-2">
+                  <Sparkles className="w-8 h-8 text-emerald-500 mx-auto" />
+                  <p className="text-sm font-semibold">No posts yet</p>
+                  <p className="text-xs text-slate-400">Share news or ask a study question above!</p>
+                </div>
               ) : (
                 posts.map((post) => {
                   const isLiked = post.likes?.some(l => l.user_id === session.user.id);
 
                   return (
-                    <article key={post.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+                    <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden transition hover:shadow-md">
+                      
                       {/* Post Header */}
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between p-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                            {post.profiles?.full_name ? post.profiles.full_name[0] : 'S'}
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-700 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                            {post.profiles?.full_name ? post.profiles.full_name[0] : 'U'}
                           </div>
                           <div>
-                            <h4 className="font-bold text-sm text-slate-800">{post.profiles?.full_name || 'Anonymous Student'}</h4>
-                            <p className="text-xs text-slate-400">{new Date(post.created_at).toLocaleString()}</p>
+                            <h4 className="font-bold text-xs text-slate-900">{post.profiles?.full_name || 'ADUSTECH Student'}</h4>
+                            <p className="text-[10px] font-medium text-slate-400">{new Date(post.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</p>
                           </div>
                         </div>
+
                         {post.user_id === session.user.id && (
-                          <button onClick={() => handleDeletePost(post.id)} className="text-slate-400 hover:text-red-500">
+                          <button onClick={() => handleDeletePost(post.id)} className="text-slate-400 hover:text-red-500 p-1.5 rounded-full hover:bg-slate-100 transition">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
 
-                      {/* Post Content */}
-                      {post.content && <p className="text-sm text-slate-700 whitespace-pre-wrap">{post.content}</p>}
+                      {/* Content */}
+                      {post.content && (
+                        <div className="px-4 pb-3 text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
+                          {post.content}
+                        </div>
+                      )}
 
-                      {/* Media Rendering */}
+                      {/* Media Display */}
                       {post.media_url && post.media_type === 'image' && (
-                        <img src={post.media_url} alt="Post media" className="rounded-lg w-full max-h-96 object-cover border" />
+                        <div className="bg-slate-900 max-h-[420px] overflow-hidden flex items-center justify-center">
+                          <img src={post.media_url} alt="Post content" className="w-full object-cover max-h-[420px]" />
+                        </div>
                       )}
                       {post.media_url && post.media_type === 'audio' && (
-                        <audio controls className="w-full mt-2">
-                          <source src={post.media_url} />
-                        </audio>
+                        <div className="p-3 bg-slate-50 border-t border-b border-slate-100">
+                          <audio controls className="w-full">
+                            <source src={post.media_url} />
+                          </audio>
+                        </div>
                       )}
                       {post.media_url && post.media_type === 'video' && (
-                        <video controls className="w-full max-h-96 rounded-lg border mt-2">
-                          <source src={post.media_url} />
-                        </video>
+                        <div className="bg-black">
+                          <video controls className="w-full max-h-[400px]">
+                            <source src={post.media_url} />
+                          </video>
+                        </div>
                       )}
 
-                      {/* Action Bar */}
-                      <div className="flex items-center justify-between border-t border-b py-2 text-xs text-slate-500">
-                        <button onClick={() => handleLike(post.id)} className={`flex items-center gap-1 ${isLiked ? 'text-red-500 font-bold' : 'hover:text-slate-800'}`}>
-                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                      {/* Stats */}
+                      <div className="px-4 py-2 flex items-center justify-between border-t border-slate-100 text-[11px] text-slate-500 font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-emerald-600 p-1 rounded-full text-white">
+                            <ThumbsUp className="w-2.5 h-2.5" />
+                          </span>
                           <span>{post.likes?.length || 0} Likes</span>
-                        </button>
-                        <span className="flex items-center gap-1">
-                          <MessageCircle className="w-4 h-4" />
-                          {post.comments?.length || 0} Comments
-                        </span>
+                        </div>
+                        <span>{post.comments?.length || 0} Comments</span>
                       </div>
-                    </article>
+
+                      {/* Action Bar */}
+                      <div className="grid grid-cols-3 border-t border-slate-100 p-1 text-slate-600 text-xs font-semibold">
+                        <button 
+                          onClick={() => handleLike(post.id)} 
+                          className={`flex items-center justify-center gap-1.5 py-2 hover:bg-slate-50 rounded-xl transition ${isLiked ? 'text-emerald-700 font-bold' : ''}`}
+                        >
+                          <ThumbsUp className="w-4 h-4" />
+                          <span>Like</span>
+                        </button>
+
+                        <button className="flex items-center justify-center gap-1.5 py-2 hover:bg-slate-50 rounded-xl transition">
+                          <MessageCircle className="w-4 h-4" />
+                          <span>Comment</span>
+                        </button>
+
+                        <button className="flex items-center justify-center gap-1.5 py-2 hover:bg-slate-50 rounded-xl transition">
+                          <Share2 className="w-4 h-4" />
+                          <span>Share</span>
+                        </button>
+                      </div>
+
+                    </div>
                   );
                 })
               )}
             </div>
           )}
-        </section>
-      </main>
+        </main>
+
+        {/* Right Info Sidebar */}
+        <aside className="hidden md:block md:col-span-4 lg:col-span-3 space-y-4 sticky top-20 h-fit">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase tracking-wider">
+              <Sparkles className="w-4 h-4" />
+              <span>Campus Updates</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Welcome to the upgraded ADUSTECH Connect digital portal. Share updates, check resources, and connect with fellow students across faculties!
+            </p>
+          </div>
+        </aside>
+
+      </div>
     </div>
   );
 }
