@@ -3,32 +3,27 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --bg-main: #f0f2f5;
-    --card-bg: #ffffff;
-    --adustech-green: #006837;
-    --adustech-green-hover: #004d28;
-    --text-primary: #050505;
-    --text-secondary: #65676b;
-    --border-color: #e4e6eb;
-  }
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    -webkit-tap-highlight-color: transparent;
-  }
-
   body {
-    background-color: var(--bg-main);
-    color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
+    @apply bg-[#f0f2f5] text-slate-900 antialiased selection:bg-emerald-500 selection:text-white;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   }
+}
 
-  input, textarea, button {
-    font-family: inherit;
-  }
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
