@@ -1,252 +1,356 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import { 
-  Home, 
-  MessageSquare, 
-  BookOpen, 
-  FileText, 
-  User, 
-  LogOut, 
-  GraduationCap, 
-  Menu, 
-  X 
-} from 'lucide-react';
-
 import Auth from './components/Auth';
-import CreatePost from './components/CreatePost';
-import PostCard from './components/PostCard';
 import Messenger from './components/Messenger';
+import StatusStories from './components/StatusStories';
 import AcademicHub from './components/AcademicHub';
 import UserProfile from './components/UserProfile';
 import NotificationsPopover from './components/NotificationsPopover';
+import { 
+  Home, MessageSquare, BookOpen, User, Search, Bell, 
+  Image, Mic, Video, Heart, MessageCircle, Share2, 
+  Trash2, Send, Menu, X, Bot, LogOut 
+} from 'lucide-react';
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('feed');
-  const [posts, setPosts] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [posts, setPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+
+  // New post form state
+  const [postText, setPostText] = useState('');
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaType, setMediaType] = useState(null); // 'image', 'audio', 'video'
+  const [uploading, setUploading] = useState(false);
+
+  // Comment state per post
+  const [comments, setComments] = useState({});
+  const [commentInput, setCommentInput] = useState({});
+  const [activeCommentPostId, setActiveCommentPostId] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setLoading(false);
+      if (session) fetchProfile(session.user.id);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setLoading(false);
+      if (session) fetchProfile(session.user.id);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchPosts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          profiles (full_name, avatar_url, department),
-          likes (user_id),
-          comments (
-            id,
-            content,
-            created_at,
-            user_id,
-            profiles (full_name, avatar_url)
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setPosts(data || []);
-    } catch (err) {
-      console.error('Error fetching posts:', err);
-    }
-  };
-
   useEffect(() => {
-    if (session && activeTab === 'feed') {
+    if (session) {
       fetchPosts();
     }
-  }, [session, activeTab]);
+  }, [session]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const fetchProfile = async (userId) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (data) setProfile(data);
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#f0f2f5]">
-        <div className="flex flex-col items-center gap-3">
-          <GraduationCap className="h-12 w-12 animate-pulse text-[#006837]" />
-          <p className="text-xs font-semibold text-gray-600">Loading ADUSTECH Connect...</p>
-        </div>
-      </div>
-    );
-  }
+  const fetchPosts = async () => {
+    setLoadingPosts(true);
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*, profiles:user_id(full_name, avatar_url, matric_number), likes(*), comments(*)')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setPosts(data);
+    }
+    setLoadingPosts(false);
+  };
+
+  const handleMediaSelect = (e, type) => {
+    const file = e.target.files[0];
+    if (file) {
+      setMediaFile(file);
+      setMediaType(type);
+    }
+  };
+
+  const handleCreatePost = async (e) => {
+    e.preventDefault();
+    if (!postText.trim() && !mediaFile) return;
+
+    setUploading(true);
+    let mediaUrl = null;
+
+    try {
+      if (mediaFile) {
+        const fileExt = mediaFile.name.split('.').pop();
+        const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('posts')
+          .upload(fileName, mediaFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('posts')
+          .getPublicUrl(fileName);
+
+        mediaUrl = publicUrlData.publicUrl;
+      }
+
+      const { error: postError } = await supabase.from('posts').insert([
+        {
+          user_id: session.user.id,
+          content: postText,
+          media_url: mediaUrl,
+          media_type: mediaType,
+        }
+      ]);
+
+      if (postError) throw postError;
+
+      setPostText('');
+      setMediaFile(null);
+      setMediaType(null);
+      fetchPosts();
+    } catch (err) {
+      alert('Error creating post: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleLike = async (postId) => {
+    const post = posts.find(p => p.id === postId);
+    const existingLike = post?.likes?.find(l => l.user_id === session.user.id);
+
+    if (existingLike) {
+      await supabase.from('likes').delete().eq('id', existingLike.id);
+    } else {
+      await supabase.from('likes').insert([{ post_id: postId, user_id: session.user.id }]);
+    }
+    fetchPosts();
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Delete this post?')) return;
+    await supabase.from('posts').delete().eq('id', postId);
+    fetchPosts();
+  };
 
   if (!session) {
     return <Auth />;
   }
 
-  const navItems = [
-    { id: 'feed', label: 'Feed', icon: Home },
-    { id: 'messenger', label: 'Messenger', icon: MessageSquare },
-    { id: 'resources', label: 'Resources', icon: BookOpen },
-    { id: 'assignments', label: 'Assignments', icon: FileText },
-    { id: 'settings', label: 'Profile & Settings', icon: User },
-  ];
-
   return (
-    <div className="min-h-screen bg-[#f0f2f5] text-gray-900">
+    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-[#e4e6eb] bg-white px-4 shadow-xs">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="h-7 w-7 text-[#006837]" />
-          <span className="text-base font-extrabold text-[#006837]">ADUSTECH Connect</span>
+      <header className="sticky top-0 z-50 bg-emerald-800 text-white shadow-md">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold tracking-wide">ADUSTECH Connect</h1>
+          </div>
+
+          {/* Search bar */}
+          <div className="hidden md:flex items-center bg-emerald-900/60 text-white rounded-full px-3 py-1.5 w-64 border border-emerald-700">
+            <Search className="w-4 h-4 text-emerald-200 mr-2" />
+            <input 
+              type="text" 
+              placeholder="Search ADUSTECH Connect..." 
+              className="bg-transparent border-none outline-none text-sm w-full placeholder-emerald-300"
+            />
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="hidden md:flex items-center gap-6">
+            <button onClick={() => setActiveTab('feed')} className={`flex items-center gap-1 font-medium hover:text-emerald-200 ${activeTab === 'feed' ? 'border-b-2 border-white pb-1' : ''}`}>
+              <Home className="w-5 h-5" /> Feed
+            </button>
+            <button onClick={() => setActiveTab('messenger')} className={`flex items-center gap-1 font-medium hover:text-emerald-200 ${activeTab === 'messenger' ? 'border-b-2 border-white pb-1' : ''}`}>
+              <MessageSquare className="w-5 h-5" /> Messenger
+            </button>
+            <button onClick={() => setActiveTab('academics')} className={`flex items-center gap-1 font-medium hover:text-emerald-200 ${activeTab === 'academics' ? 'border-b-2 border-white pb-1' : ''}`}>
+              <BookOpen className="w-5 h-5" /> Academics
+            </button>
+            <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-1 font-medium hover:text-emerald-200 ${activeTab === 'profile' ? 'border-b-2 border-white pb-1' : ''}`}>
+              <User className="w-5 h-5" /> Profile
+            </button>
+          </nav>
+
+          {/* User Controls */}
+          <div className="flex items-center gap-3">
+            <NotificationsPopover />
+            <button onClick={() => supabase.auth.signOut()} className="p-2 rounded-full hover:bg-emerald-700 text-emerald-100" title="Sign Out">
+              <LogOut className="w-5 h-5" />
+            </button>
+            <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              {mobileMenuOpen ? <X /> : <Menu />}
+            </button>
+          </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-3">
-          <NotificationsPopover session={session} />
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Sign Out
-          </button>
-        </div>
-
-        {/* Mobile Header Actions */}
-        <div className="flex items-center gap-2 sm:hidden">
-          <NotificationsPopover session={session} />
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100"
-          >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
-        </div>
+        {/* Mobile Navigation Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-emerald-900 border-t border-emerald-700 px-4 py-3 space-y-2">
+            <button onClick={() => { setActiveTab('feed'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-medium">Feed</button>
+            <button onClick={() => { setActiveTab('messenger'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-medium">Messenger</button>
+            <button onClick={() => { setActiveTab('academics'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-medium">Academics</button>
+            <button onClick={() => { setActiveTab('profile'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-medium">Profile</button>
+          </div>
+        )}
       </header>
 
-      {/* Main App Layout */}
-      <div className="mx-auto flex max-w-6xl gap-6 p-4">
-        {/* Desktop Sidebar Navigation */}
-        <aside className="hidden w-64 shrink-0 sm:block">
-          <div className="sticky top-18 rounded-xl border border-[#e4e6eb] bg-white p-3 shadow-xs">
-            <nav className="space-y-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors ${
-                      active
-                        ? 'bg-green-50 text-[#006837]'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                  >
-                    <Icon className={`h-4 w-4 ${active ? 'text-[#006837]' : 'text-gray-500'}`} />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="mt-4 border-t border-gray-100 pt-3">
-              <button
-                onClick={handleLogout}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </button>
+      {/* Main Container */}
+      <main className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+        
+        {/* Left Sidebar */}
+        <aside className="hidden md:block md:col-span-1 space-y-4">
+          <div className="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg">
+                {profile?.full_name ? profile.full_name[0] : 'S'}
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">{profile?.full_name || 'Student'}</h3>
+                <p className="text-xs text-slate-500">{profile?.matric_number || 'ADUSTECH Student'}</p>
+              </div>
+            </div>
+            <div className="text-xs text-slate-600 border-t pt-2 space-y-1">
+              <p><span className="font-semibold">Dept:</span> {profile?.department || 'N/A'}</p>
+              <p><span className="font-semibold">Level:</span> {profile?.level || 'N/A'}</p>
             </div>
           </div>
         </aside>
 
-        {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-white p-4 sm:hidden">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center gap-2">
-                <GraduationCap className="h-6 w-6 text-[#006837]" />
-                <span className="font-bold text-[#006837]">Menu</span>
-              </div>
-              <button onClick={() => setMobileMenuOpen(false)}>
-                <X className="h-6 w-6 text-gray-600" />
-              </button>
-            </div>
-            <nav className="mt-4 space-y-2">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`flex w-full items-center gap-3 rounded-lg p-3 text-sm font-semibold ${
-                      active ? 'bg-green-50 text-[#006837]' : 'text-gray-700'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-            <button
-              onClick={handleLogout}
-              className="mt-auto flex items-center justify-center gap-2 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-600"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </button>
-          </div>
-        )}
-
         {/* Main Content Area */}
-        <main className="flex-1">
-          {activeTab === 'messenger' ? (
-            <Messenger session={session} />
-          ) : activeTab === 'resources' ? (
-            <AcademicHub session={session} defaultCategory="all" />
-          ) : activeTab === 'assignments' ? (
-            <AcademicHub session={session} defaultCategory="assignment" />
-          ) : activeTab === 'settings' ? (
-            <UserProfile session={session} />
-          ) : (
-            /* Main Community Feed */
-            <div className="mx-auto max-w-xl space-y-4">
-              <CreatePost session={session} onPostCreated={fetchPosts} />
-              
-              {posts.length === 0 ? (
-                <div className="rounded-xl border border-[#e4e6eb] bg-white p-8 text-center text-xs text-gray-500 shadow-xs">
-                  No posts yet. Be the first to share something with ADUSTECH!
-                </div>
+        <section className="col-span-1 md:col-span-3 space-y-6">
+          {activeTab === 'messenger' && <Messenger session={session} />}
+          {activeTab === 'academics' && <AcademicHub session={session} />}
+          {activeTab === 'profile' && <UserProfile session={session} profile={profile} onUpdate={() => fetchProfile(session.user.id)} />}
+
+          {activeTab === 'feed' && (
+            <div className="space-y-6">
+              {/* Stories Bar */}
+              <StatusStories session={session} />
+
+              {/* Post Composer */}
+              <div className="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
+                <form onSubmit={handleCreatePost} className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                      {profile?.full_name ? profile.full_name[0] : 'S'}
+                    </div>
+                    <textarea
+                      value={postText}
+                      onChange={(e) => setPostText(e.target.value)}
+                      placeholder="What's on your mind?"
+                      className="w-full border-none focus:ring-0 resize-none text-slate-700 outline-none text-sm min-h-[60px]"
+                    />
+                  </div>
+
+                  {mediaFile && (
+                    <div className="text-xs bg-slate-100 p-2 rounded flex justify-between items-center text-slate-600">
+                      <span>Attached: {mediaFile.name} ({mediaType})</span>
+                      <button type="button" onClick={() => { setMediaFile(null); setMediaType(null); }} className="text-red-500 font-bold">Remove</button>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between border-t pt-3">
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer text-slate-500 hover:text-emerald-700 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2.5 py-1.5 rounded-lg border">
+                        <Image className="w-4 h-4 text-emerald-600" /> Photo
+                        <input type="file" accept="image/*" onChange={(e) => handleMediaSelect(e, 'image')} className="hidden" />
+                      </label>
+                      <label className="cursor-pointer text-slate-500 hover:text-emerald-700 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2.5 py-1.5 rounded-lg border">
+                        <Mic className="w-4 h-4 text-blue-600" /> Audio
+                        <input type="file" accept="audio/*" onChange={(e) => handleMediaSelect(e, 'audio')} className="hidden" />
+                      </label>
+                      <label className="cursor-pointer text-slate-500 hover:text-emerald-700 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2.5 py-1.5 rounded-lg border">
+                        <Video className="w-4 h-4 text-purple-600" /> Video
+                        <input type="file" accept="video/*" onChange={(e) => handleMediaSelect(e, 'video')} className="hidden" />
+                      </label>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={uploading || (!postText.trim() && !mediaFile)}
+                      className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg transition"
+                    >
+                      {uploading ? 'Posting...' : 'Post'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Posts Feed */}
+              {loadingPosts ? (
+                <div className="text-center py-8 text-slate-500 text-sm">Loading feed...</div>
+              ) : posts.length === 0 ? (
+                <div className="bg-white rounded-xl p-8 text-center text-slate-500 border">No posts yet. Be the first to share something!</div>
               ) : (
-                posts.map((post) => (
-                  <PostCard 
-                    key={post.id} 
-                    post={post} 
-                    session={session} 
-                    onPostUpdated={fetchPosts} 
-                  />
-                ))
+                posts.map((post) => {
+                  const isLiked = post.likes?.some(l => l.user_id === session.user.id);
+
+                  return (
+                    <article key={post.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+                      {/* Post Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                            {post.profiles?.full_name ? post.profiles.full_name[0] : 'S'}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-slate-800">{post.profiles?.full_name || 'Anonymous Student'}</h4>
+                            <p className="text-xs text-slate-400">{new Date(post.created_at).toLocaleString()}</p>
+                          </div>
+                        </div>
+                        {post.user_id === session.user.id && (
+                          <button onClick={() => handleDeletePost(post.id)} className="text-slate-400 hover:text-red-500">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Post Content */}
+                      {post.content && <p className="text-sm text-slate-700 whitespace-pre-wrap">{post.content}</p>}
+
+                      {/* Media Rendering */}
+                      {post.media_url && post.media_type === 'image' && (
+                        <img src={post.media_url} alt="Post media" className="rounded-lg w-full max-h-96 object-cover border" />
+                      )}
+                      {post.media_url && post.media_type === 'audio' && (
+                        <audio controls className="w-full mt-2">
+                          <source src={post.media_url} />
+                        </audio>
+                      )}
+                      {post.media_url && post.media_type === 'video' && (
+                        <video controls className="w-full max-h-96 rounded-lg border mt-2">
+                          <source src={post.media_url} />
+                        </video>
+                      )}
+
+                      {/* Action Bar */}
+                      <div className="flex items-center justify-between border-t border-b py-2 text-xs text-slate-500">
+                        <button onClick={() => handleLike(post.id)} className={`flex items-center gap-1 ${isLiked ? 'text-red-500 font-bold' : 'hover:text-slate-800'}`}>
+                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                          <span>{post.likes?.length || 0} Likes</span>
+                        </button>
+                        <span className="flex items-center gap-1">
+                          <MessageCircle className="w-4 h-4" />
+                          {post.comments?.length || 0} Comments
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })
               )}
             </div>
           )}
-        </main>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }
