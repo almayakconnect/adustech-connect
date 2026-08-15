@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import Messenger from './components/Messenger';
 import StatusStories from './components/StatusStories';
+import AcademicHub from './components/AcademicHub';
 import { 
   Home, Users, MessageSquare, Bell, BookOpen, FileText, 
   Settings, User, Search, LogOut, Image, Mic, Send, ThumbsUp, 
@@ -272,12 +273,14 @@ export default function App() {
         <main className="min-w-0 flex-1 px-2 sm:px-0 mb-20 md:mb-6">
           {activeTab === 'messenger' ? (
             <Messenger session={session} />
+          ) : activeTab === 'resources' ? (
+            <AcademicHub session={session} defaultCategory="all" />
+          ) : activeTab === 'assignments' ? (
+            <AcademicHub session={session} defaultCategory="assignment" />
           ) : (
             <div className="mx-auto max-w-xl space-y-4">
-              {/* Stories Bar */}
               <StatusStories session={session} />
 
-              {/* Create Post Card */}
               <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
                 <form onSubmit={handleCreatePost}>
                   <div className="flex gap-3">
@@ -353,7 +356,6 @@ export default function App() {
                 </form>
               </div>
 
-              {/* Feed States */}
               {feedLoading && (
                 <div className="flex justify-center p-8">
                   <Loader2 className="h-8 w-8 animate-spin text-[#006837]" />
@@ -378,7 +380,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Feed Posts */}
               {posts.map((post) => (
                 <article key={post.id} className="rounded-xl border border-[#e4e6eb] bg-white shadow-xs overflow-hidden">
                   <div className="p-4">
@@ -469,7 +470,7 @@ export default function App() {
           )}
         </main>
 
-        {activeTab !== 'messenger' && (
+        {activeTab === 'home' && (
           <aside className="sticky top-18 hidden h-[calc(100vh-5rem)] w-80 shrink-0 overflow-y-auto xl:block">
             <div className="flex flex-col gap-4">
               <div className="rounded-xl border border-[#e4e6eb] bg-white p-4 shadow-xs">
