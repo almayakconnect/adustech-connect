@@ -18,6 +18,7 @@ import PostCard from './components/PostCard';
 import Messenger from './components/Messenger';
 import AcademicHub from './components/AcademicHub';
 import UserProfile from './components/UserProfile';
+import NotificationsPopover from './components/NotificationsPopover';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -109,7 +110,8 @@ export default function App() {
           <span className="text-base font-extrabold text-[#006837]">ADUSTECH Connect</span>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-3">
+          <NotificationsPopover session={session} />
           <button
             onClick={handleLogout}
             className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
@@ -119,13 +121,16 @@ export default function App() {
           </button>
         </div>
 
-        {/* Mobile menu trigger */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 sm:hidden"
-        >
-          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        {/* Mobile Header Actions */}
+        <div className="flex items-center gap-2 sm:hidden">
+          <NotificationsPopover session={session} />
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100"
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </header>
 
       {/* Main App Layout */}
