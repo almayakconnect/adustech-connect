@@ -1886,4 +1886,1139 @@ function Register({
     load();
   }, []);
 
-  useEffect(() =>
+  useEffect(() => {
+    async function loadLevels() {
+      setLevelsLoading(true);
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("levels")
+        .select("id, name")
+        .order("created_at", {
+          ascending: true,
+        });
+
+      if (error) {
+        console.error(
+          "Level loading error:",
+          error
+        );
+
+        setLevels([]);
+      } else {
+        setLevels(data || []);
+      }
+
+      setLevelsLoading(false);
+    }
+
+    loadLevels();
+  }, []);
+
+  useEffect(() => {
+    async function loadDepartments() {
+      if (!facultyId) {
+        setDepartments([]);
+        return;
+      }
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("departments")
+        .select(
+          "id, name, abbreviation"
+        )
+        .eq(
+          "faculty_id",
+          facultyId
+        )
+        .order("name", {
+          ascending: true,
+        });
+
+      if (error) {
+        console.error(
+          "Department loading error:",
+          error
+        );
+
+        setDepartments([]);
+        return;
+      }
+
+      setDepartments(data || []);
+    }
+
+    loadDepartments();
+
+    setDepartmentId("");
+    setProgrammeId("");
+    setProgrammes([]);
+  }, [facultyId]);
+
+  useEffect(() => {
+    async function loadProgrammes() {
+      if (!departmentId) {
+        setProgrammes([]);
+        return;
+      }
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("programmes")
+        .select(
+          "id, name, programme_code, degree_type, duration_years"
+        )
+        .eq(
+          "department_id",
+          departmentId
+        )
+        .order("name", {
+          ascending: true,
+        });
+
+      if (error) {
+        console.error(
+          "Programme loading error:",
+          error
+        );
+
+        setProgrammes([]);
+        return;
+      }
+
+      setProgrammes(data || []);
+    }
+
+    loadProgrammes();
+
+    setProgrammeId("");
+  }, [departmentId]);
+
+  function updateForm(event) {
+    const {
+      name,
+      value,
+    } = event.target;
+
+    setForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  }
+
+  function validateAcademicSelections() {
+    if (!facultyId) {
+      throw new Error(
+        "Please select your faculty."
+      );
+    }
+
+    if (!departmentId) {
+      throw new Error(
+        "Please select your department."
+      );
+    }
+
+    if (!programmeId) {
+      throw new Error(
+        "Please select your programme."
+      );
+    }
+
+    if (!form.level_id) {
+      throw new Error(
+        "Please select your level."
+      );
+    }
+
+    const selectedLevel =
+      levels.find(
+        (level) =>
+          level.id ===
+          form.level_id
+      );
+
+    if (!selectedLevel) {
+      throw new Error(
+        "The selected level is no longer available."
+      );
+    }
+  }
+
+  async function handleRegister(event) {
+    event.preventDefault();
+
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      validateAcademicSelections();
+
+      const fullName =
+        form.full_name.trim();
+
+      const email =
+        form.email
+          .trim()
+          .toLowerCase();
+
+      const matricNumber =
+        form.matric_number.trim();
+
+      if (!fullName) {
+        throw new Error(
+          "Please enter your full name."
+        );
+      }
+
+      if (!email) {
+        throw new Error(
+          "Please enter your email address."
+        );
+      }
+
+      if (!matricNumber) {
+        throw new Error(
+          "Please enter your matric number."
+        );
+      }
+
+      if (
+        form.password.length <
+        6
+      ) {
+        throw new Error(
+          "Password must contain at least 6 characters."
+        );
+      }
+
+      const pendingProfile = {
+        matric_number:
+          matricNumber,
+
+        institution_id:
+          INSTITUTION_ID,
+
+        faculty_id:
+          facultyId,
+
+        department_id:
+          departmentId,
+
+        programme_id:
+          programmeId,
+
+        level_id:
+          form.level_id,
+      };
+
+      localStorage.setItem(
+        PENDING_PROFILE_KEY,
+        JSON.stringify({
+          email,
+          profile:
+            pendingProfile,
+        })
+      );
+
+      const {
+        data,
+        error,
+      } =
+        await supabase.auth.signUp({
+          email,
+          password:
+            form.password,
+
+          options: {
+            data: {
+              full_name:
+                fullName,
+
+              matric_number:
+                matricNumber,
+            },
+          },
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.user) {
+        throw new Error(
+          "Supabase did not return a user account."
+        );
+      }
+
+      /*
+       * If email confirmation is disabled,
+       * Supabase gives us a session immediately.
+       */
+      if (data.session) {
+        await saveAcademicProfile(
+          data.user.id,
+          pendingProfile
+        );
+
+        localStorage.removeItem(
+          PENDING_PROFILE_KEY
+        );
+
+        alert(
+          "Account created successfully! Welcome to ADUSTECH Connect."
+        );
+
+        resetRegistrationForm();
+
+        return;
+      }
+
+      /*
+       * If email confirmation is enabled,
+       * the user must log in after confirming.
+       */
+      alert(
+        "Account created successfully. Please confirm your email if required, then log in to complete your student profile."
+      );
+
+      resetRegistrationForm();
+
+      setTimeout(() => {
+        onLogin();
+      }, 300);
+
+    } catch (error) {
+      console.error(
+        "Registration error:",
+        error
+      );
+
+      alert(
+        error?.message ||
+        "Registration failed. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function resetRegistrationForm() {
+    setForm({
+      full_name: "",
+      email: "",
+      password: "",
+      matric_number: "",
+      level_id: "",
+    });
+
+    setFacultyId("");
+    setDepartmentId("");
+    setProgrammeId("");
+    setDepartments([]);
+    setProgrammes([]);
+  }
+
+  return (
+    <main className="page">
+      <div className="auth-card">
+
+        <button
+          className="back"
+          type="button"
+          onClick={onBack}
+        >
+          ← Back
+        </button>
+
+        <div className="brand">
+          <div className="logo">
+            A
+          </div>
+
+          <h1>
+            ADUSTECH Connect
+          </h1>
+        </div>
+
+        <h2>
+          Create your account
+        </h2>
+
+        <p>
+          Join the academic community of students.
+        </p>
+
+        <form
+          onSubmit={
+            handleRegister
+          }
+        >
+
+          <input
+            name="full_name"
+            type="text"
+            placeholder="Full name"
+            value={
+              form.full_name
+            }
+            onChange={
+              updateForm
+            }
+            required
+          />
+
+          <input
+            name="email"
+            type="email"
+            placeholder="Student email"
+            value={
+              form.email
+            }
+            onChange={
+              updateForm
+            }
+            required
+          />
+
+          <input
+            name="matric_number"
+            type="text"
+            placeholder="Matric number"
+            value={
+              form.matric_number
+            }
+            onChange={
+              updateForm
+            }
+            required
+          />
+
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            value={
+              form.password
+            }
+            onChange={
+              updateForm
+            }
+            minLength={6}
+            required
+          />
+
+          <select
+            value={facultyId}
+            onChange={(event) =>
+              setFacultyId(
+                event.target.value
+              )
+            }
+            required
+          >
+            <option value="">
+              Select Faculty
+            </option>
+
+            {faculties.map(
+              (faculty) => (
+                <option
+                  key={
+                    faculty.id
+                  }
+                  value={
+                    faculty.id
+                  }
+                >
+                  {faculty.name}
+
+                  {faculty.abbreviation
+                    ? ` (${faculty.abbreviation})`
+                    : ""}
+                </option>
+              )
+            )}
+          </select>
+
+          <select
+            value={departmentId}
+            onChange={(event) =>
+              setDepartmentId(
+                event.target.value
+              )
+            }
+            disabled={
+              !facultyId
+            }
+            required
+          >
+            <option value="">
+              {!facultyId
+                ? "Select Faculty First"
+                : departments.length ===
+                  0
+                ? "No Departments Available"
+                : "Select Department"}
+            </option>
+
+            {departments.map(
+              (department) => (
+                <option
+                  key={
+                    department.id
+                  }
+                  value={
+                    department.id
+                  }
+                >
+                  {department.name}
+
+                  {department.abbreviation
+                    ? ` (${department.abbreviation})`
+                    : ""}
+                </option>
+              )
+            )}
+          </select>
+
+          <select
+            value={programmeId}
+            onChange={(event) =>
+              setProgrammeId(
+                event.target.value
+              )
+            }
+            disabled={
+              !departmentId
+            }
+            required
+          >
+            <option value="">
+              {!departmentId
+                ? "Select Department First"
+                : programmes.length ===
+                  0
+                ? "No Programmes Available"
+                : "Select Programme"}
+            </option>
+
+            {programmes.map(
+              (programme) => (
+                <option
+                  key={
+                    programme.id
+                  }
+                  value={
+                    programme.id
+                  }
+                >
+                  {programme.name}
+                </option>
+              )
+            )}
+          </select>
+
+          <select
+            name="level_id"
+            value={
+              form.level_id
+            }
+            onChange={
+              updateForm
+            }
+            disabled={
+              levelsLoading ||
+              levels.length === 0
+            }
+            required
+          >
+            <option value="">
+              {levelsLoading
+                ? "Loading Levels..."
+                : levels.length ===
+                  0
+                ? "No Levels Available"
+                : "Select Level"}
+            </option>
+
+            {levels.map(
+              (level) => (
+                <option
+                  key={
+                    level.id
+                  }
+                  value={
+                    level.id
+                  }
+                >
+                  {level.name}
+                </option>
+              )
+            )}
+          </select>
+
+          <button
+            className="primary"
+            type="submit"
+            disabled={
+              loading ||
+              levelsLoading ||
+              levels.length === 0
+            }
+          >
+            {loading
+              ? "Creating Account..."
+              : "Create Account"}
+          </button>
+
+        </form>
+
+        <p className="switch">
+          Already have an account?{" "}
+
+          <button
+            type="button"
+            onClick={onLogin}
+          >
+            Log in
+          </button>
+        </p>
+
+      </div>
+    </main>
+  );
+}
+
+
+/* =====================================================
+   SAVE ACADEMIC PROFILE
+===================================================== */
+
+async function saveAcademicProfile(
+  userId,
+  profile
+) {
+  if (!userId) {
+    throw new Error(
+      "User ID is missing."
+    );
+  }
+
+  if (!profile?.level_id) {
+    throw new Error(
+      "Level information is missing."
+    );
+  }
+
+  const {
+    data: userData,
+    error: userError,
+  } =
+    await supabase.auth.getUser();
+
+  if (userError) {
+    throw userError;
+  }
+
+  const user =
+    userData?.user;
+
+  if (!user) {
+    throw new Error(
+      "Your login session is not available. Please log in again."
+    );
+  }
+
+  if (user.id !== userId) {
+    throw new Error(
+      "The authenticated user does not match the profile being updated."
+    );
+  }
+
+  const {
+    error,
+  } =
+    await supabase.rpc(
+      "complete_student_profile",
+      {
+        p_user_id:
+          userId,
+
+        p_matric_number:
+          profile.matric_number,
+
+        p_institution_id:
+          profile.institution_id,
+
+        p_faculty_id:
+          profile.faculty_id,
+
+        p_department_id:
+          profile.department_id,
+
+        p_programme_id:
+          profile.programme_id,
+
+        p_level_id:
+          profile.level_id,
+      }
+    );
+
+  if (error) {
+    console.error(
+      "Academic profile RPC error:",
+      error
+    );
+
+    throw new Error(
+      `Academic profile could not be saved: ${error.message}`
+    );
+  }
+}
+
+
+/* =====================================================
+   LOGIN
+===================================================== */
+
+function Login({
+  onBack,
+  onRegister,
+}) {
+  const [email, setEmail] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  async function handleLogin(
+    event
+  ) {
+    event.preventDefault();
+
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const {
+        data,
+        error,
+      } =
+        await supabase.auth.signInWithPassword(
+          {
+            email:
+              email
+                .trim()
+                .toLowerCase(),
+
+            password,
+          }
+        );
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.user) {
+        throw new Error(
+          "Login failed. No user was returned."
+        );
+      }
+
+      const pendingRaw =
+        localStorage.getItem(
+          PENDING_PROFILE_KEY
+        );
+
+      if (pendingRaw) {
+        let pending =
+          null;
+
+        try {
+          pending =
+            JSON.parse(
+              pendingRaw
+            );
+        } catch {
+          localStorage.removeItem(
+            PENDING_PROFILE_KEY
+          );
+        }
+
+        if (
+          pending &&
+          pending.email ===
+            data.user.email?.toLowerCase()
+        ) {
+          try {
+            await saveAcademicProfile(
+              data.user.id,
+              pending.profile
+            );
+
+            localStorage.removeItem(
+              PENDING_PROFILE_KEY
+            );
+
+            alert(
+              "Login successful! Your academic profile has been completed."
+            );
+
+            return;
+          } catch (
+            profileError
+          ) {
+            console.error(
+              "Pending academic profile error:",
+              profileError
+            );
+
+            alert(
+              "Login successful, but your academic information could not be saved.\n\n" +
+              profileError.message
+            );
+
+            return;
+          }
+        }
+      }
+
+      alert(
+        "Login successful! Welcome to ADUSTECH Connect."
+      );
+
+    } catch (error) {
+      console.error(
+        "Login error:",
+        error
+      );
+
+      alert(
+        error?.message ||
+        "Login failed. Please check your email and password."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="page">
+      <div className="auth-card">
+
+        <button
+          className="back"
+          type="button"
+          onClick={onBack}
+        >
+          ← Back
+        </button>
+
+        <div className="brand">
+          <div className="logo">
+            A
+          </div>
+
+          <h1>
+            ADUSTECH Connect
+          </h1>
+        </div>
+
+        <h2>
+          Welcome back
+        </h2>
+
+        <p>
+          Log in to continue to your student community.
+        </p>
+
+        <form
+          onSubmit={
+            handleLogin
+          }
+        >
+
+          <input
+            type="email"
+            placeholder="Student email"
+            value={email}
+            onChange={(event) =>
+              setEmail(
+                event.target.value
+              )
+            }
+            required
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(event) =>
+              setPassword(
+                event.target.value
+              )
+            }
+            required
+          />
+
+          <button
+            className="primary"
+            type="submit"
+            disabled={loading}
+          >
+            {loading
+              ? "Logging in..."
+              : "Log In"}
+          </button>
+
+        </form>
+
+        <p className="switch">
+          Don't have an account?{" "}
+
+          <button
+            type="button"
+            onClick={
+              onRegister
+            }
+          >
+            Create one
+          </button>
+        </p>
+
+      </div>
+    </main>
+  );
+}
+
+
+/* =====================================================
+   LOADING SCREEN
+===================================================== */
+
+function LoadingScreen() {
+  return (
+    <main className="loading-screen">
+      <div className="loading-box">
+        <div className="logo">
+          A
+        </div>
+
+        <h2>
+          ADUSTECH Connect
+        </h2>
+
+        <p>
+          Loading your student community...
+        </p>
+      </div>
+    </main>
+  );
+}
+
+
+/* =====================================================
+   LOADING CARD
+===================================================== */
+
+function LoadingCard() {
+  return (
+    <div className="empty card">
+      <div className="empty-icon">
+        ⏳
+      </div>
+
+      <h3>
+        Loading...
+      </h3>
+
+      <p>
+        Please wait while we load the community.
+      </p>
+    </div>
+  );
+}
+
+
+/* =====================================================
+   FEATURE
+===================================================== */
+
+function Feature({
+  icon,
+  title,
+  text,
+}) {
+  return (
+    <div className="feature">
+
+      <div className="feature-icon">
+        {icon}
+      </div>
+
+      <h3>
+        {title}
+      </h3>
+
+      <p>
+        {text}
+      </p>
+
+    </div>
+  );
+}
+
+
+/* =====================================================
+   NAV BUTTON
+===================================================== */
+
+function NavButton({
+  icon,
+  text,
+  active,
+  onClick,
+}) {
+  return (
+    <button
+      className={
+        active
+          ? "nav-button active"
+          : "nav-button"
+      }
+      onClick={onClick}
+      type="button"
+    >
+      <span>
+        {icon}
+      </span>
+
+      <span>
+        {text}
+      </span>
+    </button>
+  );
+}
+
+
+/* =====================================================
+   PROFILE FIELD
+===================================================== */
+
+function ProfileField({
+  label,
+  value,
+}) {
+  return (
+    <div className="profile-field">
+      <span>
+        {label}
+      </span>
+
+      <strong>
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
+function getInitials(value) {
+  if (!value) {
+    return "A";
+  }
+
+  const text =
+    String(value).trim();
+
+  if (!text) {
+    return "A";
+  }
+
+  /*
+   * Email address
+   */
+  if (
+    text.includes("@")
+  ) {
+    const emailName =
+      text.split("@")[0];
+
+    if (!emailName) {
+      return "A";
+    }
+
+    return emailName
+      .slice(0, 2)
+      .toUpperCase();
+  }
+
+  /*
+   * Normal name / matric number
+   */
+  const parts =
+    text
+      .split(/\s+/)
+      .filter(Boolean);
+
+  if (
+    parts.length >= 2
+  ) {
+    return (
+      parts[0][0] +
+      parts[parts.length - 1][0]
+    ).toUpperCase();
+  }
+
+  return text
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+
+function formatDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return date.toLocaleString(
+    undefined,
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }
+  );
+  }
