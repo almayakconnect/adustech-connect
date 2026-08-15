@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import Auth from './components/Auth';
 import Messenger from './components/Messenger';
 import StatusStories from './components/StatusStories';
 import AcademicHub from './components/AcademicHub';
 import UserProfile from './components/UserProfile';
 import NotificationsPopover from './components/NotificationsPopover';
+import AlmayakAI from './components/AlmayakAI';
 import { 
-  Home, MessageSquare, BookOpen, User, Search, Bell, 
-  Image, Mic, Video, Heart, MessageCircle, Share2, 
-  Trash2, Send, Menu, X, LogOut, Users, Bookmark, 
-  ThumbsUp, MoreHorizontal, Smile, Film, Sparkles,
-  GraduationCap, Building2, CheckCircle2
+  Home, MessageSquare, BookOpen, User, Search, 
+  Image, Mic, Video, ThumbsUp, MessageCircle, Share2, 
+  Trash2, Menu, X, LogOut, Sparkles, Building2, 
+  GraduationCap, ArrowRight, ShieldCheck, Users, Film
 } from 'lucide-react';
 
 export default function App() {
@@ -21,6 +20,19 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [aiOpen, setAiOpen] = useState(false);
+
+  // Auth State (Pre-login Landing Page)
+  const [isLogin, setIsLogin] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [matricNumber, setMatricNumber] = useState('');
+  const [faculty, setFaculty] = useState('');
+  const [department, setDepartment] = useState('');
+  const [level, setLevel] = useState('100');
 
   // Post creation state
   const [postText, setPostText] = useState('');
@@ -64,6 +76,41 @@ export default function App() {
       setPosts(data);
     }
     setLoadingPosts(false);
+  };
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError('');
+
+    try {
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      } else {
+        const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+        if (signUpError) throw signUpError;
+
+        if (data.user) {
+          const { error: profileError } = await supabase.from('profiles').upsert([
+            {
+              id: data.user.id,
+              full_name: fullName,
+              matric_number: matricNumber,
+              faculty,
+              department,
+              level,
+              email,
+            },
+          ]);
+          if (profileError) throw profileError;
+        }
+      }
+    } catch (err) {
+      setAuthError(err.message);
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleMediaSelect = (e, type) => {
@@ -138,18 +185,198 @@ export default function App() {
     fetchPosts();
   };
 
+  // PRE-LOGIN WELCOME PAGE
   if (!session) {
-    return <Auth />;
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4 relative overflow-hidden font-sans">
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-600/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 bg-slate-800/90 backdrop-blur-md rounded-2xl border border-slate-700/80 shadow-2xl overflow-hidden z-10">
+          
+          <div className="bg-gradient-to-br from-emerald-800 to-teal-900 p-8 flex flex-col justify-between">
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 font-black text-2xl shadow-inner">
+                  A
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight text-white">ADUSTECH</h1>
+                  <p className="text-xs font-medium text-emerald-300">Connect Network</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-4">
+                <h2 className="text-2xl font-extrabold text-white leading-tight">
+                  Welcome to your campus digital community.
+                </h2>
+                <p className="text-sm text-emerald-100/80 leading-relaxed">
+                  Connect with fellow students, access course materials, collaborate in student communities, and chat seamlessly.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-emerald-700/50">
+                <div className="flex items-center gap-3 text-xs text-emerald-100">
+                  <Users className="w-4 h-4 text-emerald-300 flex-shrink-0" />
+                  <span>Student feed, status updates & messaging</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-emerald-100">
+                  <BookOpen className="w-4 h-4 text-emerald-300 flex-shrink-0" />
+                  <span>Academic resources & assignment hub</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-emerald-100">
+                  <Sparkles className="w-4 h-4 text-emerald-300 flex-shrink-0" />
+                  <span>Almayak AI Study Assistant</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-emerald-200/60 pt-6">
+              Aliko Dangote University of Science and Technology, Wudil
+            </p>
+          </div>
+
+          <div className="p-8 flex flex-col justify-center bg-slate-800">
+            <div className="flex bg-slate-900/60 p-1 rounded-xl mb-6 border border-slate-700">
+              <button
+                type="button"
+                onClick={() => { setIsLogin(true); setAuthError(''); }}
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${isLogin ? 'bg-emerald-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsLogin(false); setAuthError(''); }}
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${!isLogin ? 'bg-emerald-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+              >
+                Create Account
+              </button>
+            </div>
+
+            {authError && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+                {authError}
+              </div>
+            )}
+
+            <form onSubmit={handleAuth} className="space-y-3">
+              {!isLogin && (
+                <>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-300 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="e.g. Abdulrahman Abdulmalik"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-300 mb-1">Matric Number</label>
+                      <input
+                        type="text"
+                        required
+                        value={matricNumber}
+                        onChange={(e) => setMatricNumber(e.target.value)}
+                        placeholder="UG25/CIVE/1112"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-300 mb-1">Level</label>
+                      <select
+                        value={level}
+                        onChange={(e) => setLevel(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="100">100 Level</option>
+                        <option value="200">200 Level</option>
+                        <option value="300">300 Level</option>
+                        <option value="400">400 Level</option>
+                        <option value="500">500 Level</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-300 mb-1">Faculty</label>
+                      <input
+                        type="text"
+                        required
+                        value={faculty}
+                        onChange={(e) => setFaculty(e.target.value)}
+                        placeholder="Engineering"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-300 mb-1">Department</label>
+                      <input
+                        type="text"
+                        required
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        placeholder="Civil Engineering"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-300 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="student@adustech.edu.ng"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-300 mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>{authLoading ? 'Processing...' : isLogin ? 'Sign In to ADUSTECH Connect' : 'Complete Registration'}</span>
+                {!authLoading && <ArrowRight className="w-4 h-4" />}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  // MAIN DASHBOARD APPLICATION
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-slate-900 font-sans">
       
-      {/* Top Header - Facebook/University Clean Hybrid */}
+      {/* Facebook-style Main Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/80">
         <div className="max-w-[1440px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
           
-          {/* Logo & Search */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('feed')}>
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-800 to-emerald-600 flex items-center justify-center font-black text-white text-xl shadow-md shadow-emerald-900/10 tracking-tight">
@@ -171,7 +398,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Central Navigation Tabs */}
           <nav className="hidden md:flex items-center justify-center h-full max-w-md w-full">
             <button 
               onClick={() => setActiveTab('feed')} 
@@ -203,7 +429,6 @@ export default function App() {
             </button>
           </nav>
 
-          {/* User & Controls */}
           <div className="flex items-center gap-2">
             <NotificationsPopover />
             <button 
@@ -219,7 +444,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Mobile Navigation Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-b px-4 py-3 space-y-1 shadow-lg">
             <button onClick={() => { setActiveTab('feed'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 w-full p-2.5 rounded-lg text-sm font-semibold ${activeTab === 'feed' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700'}`}>
@@ -238,7 +462,7 @@ export default function App() {
         )}
       </header>
 
-      {/* Main Layout Grid */}
+      {/* Main Grid */}
       <div className="max-w-[1280px] mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-12 gap-6">
         
         {/* Left Sidebar */}
@@ -270,7 +494,7 @@ export default function App() {
           </div>
         </aside>
 
-        {/* Center Main Feed */}
+        {/* Center Main View */}
         <main className="col-span-1 md:col-span-8 lg:col-span-6 space-y-5">
           {activeTab === 'messenger' && <Messenger session={session} />}
           {activeTab === 'academics' && <AcademicHub session={session} />}
@@ -279,10 +503,8 @@ export default function App() {
           {activeTab === 'feed' && (
             <div className="space-y-5">
               
-              {/* Stories Component */}
               <StatusStories session={session} />
 
-              {/* Enhanced Facebook-style Composer */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4">
                 <form onSubmit={handleCreatePost}>
                   <div className="flex gap-3 items-center pb-3 border-b border-slate-100">
@@ -305,7 +527,6 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Attachment Actions */}
                   <div className="flex items-center justify-between pt-3">
                     <label className="flex items-center justify-center gap-2 flex-1 hover:bg-slate-50 py-2 rounded-xl cursor-pointer transition text-slate-600">
                       <Image className="w-5 h-5 text-emerald-500" />
@@ -338,7 +559,6 @@ export default function App() {
                 </form>
               </div>
 
-              {/* Posts Feed Cards */}
               {loadingPosts ? (
                 <div className="bg-white rounded-2xl p-8 text-center text-slate-400 text-xs font-medium border border-slate-200/80 shadow-sm">Loading campus feed...</div>
               ) : posts.length === 0 ? (
@@ -353,8 +573,6 @@ export default function App() {
 
                   return (
                     <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden transition hover:shadow-md">
-                      
-                      {/* Post Header */}
                       <div className="flex items-center justify-between p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-700 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
@@ -373,14 +591,12 @@ export default function App() {
                         )}
                       </div>
 
-                      {/* Content */}
                       {post.content && (
                         <div className="px-4 pb-3 text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
                           {post.content}
                         </div>
                       )}
 
-                      {/* Media Display */}
                       {post.media_url && post.media_type === 'image' && (
                         <div className="bg-slate-900 max-h-[420px] overflow-hidden flex items-center justify-center">
                           <img src={post.media_url} alt="Post content" className="w-full object-cover max-h-[420px]" />
@@ -401,7 +617,6 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Stats */}
                       <div className="px-4 py-2 flex items-center justify-between border-t border-slate-100 text-[11px] text-slate-500 font-medium">
                         <div className="flex items-center gap-1.5">
                           <span className="bg-emerald-600 p-1 rounded-full text-white">
@@ -412,7 +627,6 @@ export default function App() {
                         <span>{post.comments?.length || 0} Comments</span>
                       </div>
 
-                      {/* Action Bar */}
                       <div className="grid grid-cols-3 border-t border-slate-100 p-1 text-slate-600 text-xs font-semibold">
                         <button 
                           onClick={() => handleLike(post.id)} 
@@ -455,6 +669,21 @@ export default function App() {
         </aside>
 
       </div>
+
+      <button
+        onClick={() => setAiOpen(true)}
+        className="fixed bottom-6 right-6 z-40 bg-gradient-to-tr from-emerald-800 to-teal-600 text-white rounded-full p-3.5 shadow-xl hover:scale-105 transition flex items-center gap-2 group"
+        title="Ask Almayak AI"
+      >
+        <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+        <span className="text-xs font-bold pr-1 hidden sm:inline">Ask Almayak AI</span>
+      </button>
+
+      <AlmayakAI 
+        isOpen={aiOpen} 
+        onClose={() => setAiOpen(false)} 
+        userProfile={profile} 
+      />
     </div>
   );
 }
