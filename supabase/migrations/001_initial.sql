@@ -1,0 +1,153 @@
+create extension if not exists pgcrypto;
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  username text unique not null check (length(username) between 3 and 32),
+  full_name text not null,
+  faculty text,
+  department text,
+  level text,
+  bio text,
+  avatar_url text,
+  interests text[] not null default '{}',
+  study_interests text[] not null default '{}',
+  is_visible boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.connections (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references public.profiles(id) on delete cascade,
+  recipient_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending','accepted','declined','blocked')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (requester_id <> recipient_id),
+  unique (requester_id, recipient_id)
+);
+
+create table if not exists public.conversations (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.conversation_members (
+  conversation_id uuid not null references public.conversations(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  primary key (conversation_id, user_id)
+);
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null references public.conversations(id) on delete cascade,
+  sender_id uuid not null references public.profiles(id) on delete cascade,
+  content text not null check (length(trim(content)) between 1 and 5000),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.communities (
+  id uuid primary key default gen_random_uuid(),
+  creator_id uuid not null references public.profiles(id) on delete cascade,
+  name text not null check (length(name) between 2 and 120),
+  description text not null,
+  category text not null,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.community_members (
+  community_id uuid not null references public.communities(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (community_id, user_id)
+);
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null,
+  payload jsonb not null default '{}',
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.blocks (
+  blocker_id uuid not null references public.profiles(id) on delete cascade,
+  blocked_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker_id, blocked_id),
+  check (blocker_id <> blocked_id)
+);
+create table if not exists public.reports (
+  id uuid primary key default gen_random_uuid(),
+  reporter_id uuid not null references public.profiles(id) on delete cascade,
+  reported_user_id uuid references public.profiles(id) on delete set null,
+  message_id uuid references public.messages(id) on delete set null,
+  reason text not null,
+  details text,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.user_preferences (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  profile_visible boolean not null default true,
+  allow_messages text not null default 'connections' check (allow_messages in ('everyone','connections','nobody')),
+  show_online boolean not null default true,
+  match_visible boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.chat_preferences (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  theme text not null default 'default',
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists profiles_visibility_idx on public.profiles (is_visible);
+create index if not exists connections_recipient_idx on public.connections (recipient_id, status);
+create index if not exists messages_conversation_idx on public.messages (conversation_id, created_at);
+
+alter table public.profiles enable row level security;
+alter table public.connections enable row level security;
+alter table public.conversations enable row level security;
+alter table public.conversation_members enable row level security;
+alter table public.messages enable row level security;
+alter table public.communities enable row level security;
+alter table public.community_members enable row level security;
+alter table public.notifications enable row level security;
+alter table public.blocks enable row level security;
+alter table public.reports enable row level security;
+alter table public.user_preferences enable row level security;
+alter table public.chat_preferences enable row level security;
+
+create policy "visible profiles are readable" on public.profiles for select using (is_visible or id = auth.uid());
+create policy "users create own profile" on public.profiles for insert with check (id = auth.uid());
+create policy "users update own profile" on public.profiles for update using (id = auth.uid()) with check (id = auth.uid());
+create policy "participants read connections" on public.connections for select using (requester_id = auth.uid() or recipient_id = auth.uid());
+create policy "users send own requests" on public.connections for insert with check (requester_id = auth.uid());
+create policy "participants update requests" on public.connections for update using (requester_id = auth.uid() or recipient_id = auth.uid());
+create policy "members read conversations" on public.conversations for select using (exists (select 1 from public.conversation_members m where m.conversation_id = id and m.user_id = auth.uid()));
+create policy "members read membership" on public.conversation_members for select using (user_id = auth.uid() or exists (select 1 from public.conversation_members m where m.conversation_id = conversation_id and m.user_id = auth.uid()));
+create policy "members read messages" on public.messages for select using (exists (select 1 from public.conversation_members m where m.conversation_id = messages.conversation_id and m.user_id = auth.uid()));
+create policy "members send own messages" on public.messages for insert with check (sender_id = auth.uid() and exists (select 1 from public.conversation_members m where m.conversation_id = messages.conversation_id and m.user_id = auth.uid()));
+create policy "communities are readable" on public.communities for select using (true);
+create policy "users create communities" on public.communities for insert with check (creator_id = auth.uid());
+create policy "community membership readable" on public.community_members for select using (true);
+create policy "users manage own memberships" on public.community_members for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "users read own notifications" on public.notifications for select using (user_id = auth.uid());
+create policy "users manage own blocks" on public.blocks for all using (blocker_id = auth.uid()) with check (blocker_id = auth.uid());
+create policy "users create reports" on public.reports for insert with check (reporter_id = auth.uid());
+create policy "users manage preferences" on public.user_preferences for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "users manage chat preferences" on public.chat_preferences for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id, username, full_name)
+  values (new.id, coalesce(nullif(new.raw_user_meta_data->>'username',''), 'user_' || substr(new.id::text, 1, 8)), coalesce(nullif(new.raw_user_meta_data->>'full_name',''), 'New student'))
+  on conflict (id) do nothing;
+  insert into public.user_preferences (user_id) values (new.id) on conflict do nothing;
+  insert into public.chat_preferences (user_id) values (new.id) on conflict do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();
+
+-- Enable only the tables needed for live messaging after applying this migration in Supabase.
+alter publication supabase_realtime add table public.messages;
+alter publication supabase_realtime add table public.notifications;
